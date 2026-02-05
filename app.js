@@ -218,4 +218,278 @@ function renderQuickPortions(keysAdded){
     card.innerHTML = `
       <div class="portionTitle">${f.label}</div>
       <div class="portionBtns">
-        ${opts.map(v => `<button type="button" class="chip" data-key="${ke
+        ${opts.map(v => `<button type="button" class="chip" data-key="${key}" data-v="${v}">${v} ${prettyUnit(f.unit)}</button>`).join("")}
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+
+  grid.querySelectorAll("button.chip").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      const key = e.target.getAttribute("data-key");
+      const v = Number(e.target.getAttribute("data-v"));
+      const it = state.items.find(x => x.foodKey === key);
+      if (!it) return;
+      it.qty = v;
+      renderItems();
+    });
+  });
+}
+
+function suggestFromText(text){
+  const t = (text || "").toLowerCase();
+  const found = [];
+
+  for (const k of KEYWORDS){
+    if (k.hits.some(h => t.includes(h))) found.push(k.key);
+  }
+
+  const added = [];
+  for (const key of found){
+    if (!state.items.some(it => it.foodKey === key)){
+      const def = DEFAULTS[key] || {qty:1};
+      addItem(key, def.qty);
+      added.push(key);
+    }
+  }
+
+  if (state.items.length === 0 && FOODS.length) addItem(FOODS[0].key, 1);
+  renderQuickPortions(added);
+}
+
+/* ---------------- Foto opcional com compressão ---------------- */
+async function compressImage(file, maxW=1280, quality=0.75){
+  const dataUrl = await new Promise((res) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result);
+    r.readAsDataURL(file);
+  });
+
+  const img = new Image();
+  img.src = dataUrl;
+  await new Promise((res) => (img.onload = res));
+
+  const scale = Math.min(1, maxW / img.width);
+  const w = Math.round(img.width * scale);
+  const h = Math.round(img.height * scale);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0, w, h);
+
+  return canvas.toDataURL("image/jpeg", quality);
+}
+
+function setupPhoto(){
+  const input = $("photo");
+  const preview = $("preview");
+
+  input.addEventListener("change", async () => {
+    const file = input.files?.[0];
+    if (!file) return;
+
+    const compressed = await compressImage(file, 1280, 0.75);
+    state.photoDataUrl = compressed;
+
+    preview.src = state.photoDataUrl;
+    preview.style.display = "block";
+  });
+
+  $("clearPhoto").addEventListener("click", () => {
+    state.photoDataUrl = null;
+    preview.src = "";
+    preview.style.display = "none";
+    input.value = "";
+  });
+}
+
+/* ---------------- Histórico + Dashboard ---------------- */
+function getHistory(){
+  return JSON.parse(localStorage.getItem(STORAGE_HISTORY) || "[]");
+}
+function setHistory(arr){
+  localStorage.setItem(STORAGE_HISTORY, JSON.stringify(arr));
+}
+
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g, (c) => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+  }[c]));
+}
+
+function saveMeal(){
+  const mealTotals = computeMealTotals(state.items);
+
+  const entry = {
+    ts: new Date().toISOString(),
+    day: todayKey(),
+    desc: $("desc").value.trim(),
+    photo: state.photoDataUrl,
+    items: state.items,
+    quickKcal: 0,
+    kcal: mealTotals.kcal
+  };
+
+  const history = getHistory();
+  history.unshift(entry);
+  setHistory(history.slice(0, 60));
+
+  // reset “registrar”
+  $("desc").value = "";
+  state.items = [];
+  renderItems();
+  renderQuickPortions([]);
+
+  renderHistory();
+  renderDashboard();
+  setActiveScreen("home");
+}
+
+function quickAddKcal(kcal){
+  const entry = {
+    ts: new Date().toISOString(),
+    day: todayKey(),
+    desc: "Adição rápida",
+    photo: null,
+    items: [],
+    quickKcal: kcal,
+    kcal: kcal
+  };
+  const history = getHistory();
+  history.unshift(entry);
+  setHistory(history.slice(0, 60));
+  renderHistory();
+  renderDashboard();
+}
+
+function renderHistory(){
+  const history = getHistory();
+  const wrap = $("history");
+  wrap.innerHTML = "";
+
+  if (!history.length){
+    wrap.innerHTML = `<p class="muted">Nada salvo ainda.</p>`;
+    return;
+  }
+
+  for (const h of history){
+    const dt = new Date(h.ts);
+    const kcal = Math.round(Number(h.kcal || 0));
+    const div = document.createElement("div");
+    div.className = "histCard";
+    div.innerHTML = `
+      <div><strong>${kcal} kcal</strong> <span class="muted">(${dt.toLocaleString()})</span></div>
+      <div class="muted">${escapeHtml(h.desc || "")}</div>
+      ${h.photo ? `<img alt="foto" src="${h.photo}" class="histImg">` : ""}
+    `;
+    wrap.appendChild(div);
+  }
+}
+
+function sumConsumedForDay(dayStr){
+  const history = getHistory();
+  let total = 0;
+  for (const h of history){
+    if ((h.day || (h.ts ? todayKey(new Date(h.ts)) : "")) === dayStr){
+      total += Number(h.kcal || 0);
+    }
+  }
+  return total;
+}
+
+function renderDashboard(){
+  const target = getDailyTarget();
+  const day = todayKey();
+  const consumed = sumConsumedForDay(day);
+
+  const remainingRaw = target - consumed;
+  const remaining = Math.max(0, Math.round(remainingRaw));
+  const pct = target > 0 ? Math.min(100, Math.round((consumed/target)*100)) : 0;
+
+  $("dashConsumed").textContent = Math.round(consumed);
+  $("dashTarget").textContent = Math.round(target);
+  $("dashRemaining").textContent = remaining;
+  $("dashPct").textContent = pct;
+  $("dashFill").style.width = `${pct}%`;
+
+  const d = new Date();
+  const label = d.toLocaleDateString("pt-BR", { weekday:"long", day:"2-digit", month:"short" });
+  $("todayLabel").textContent = label.charAt(0).toUpperCase() + label.slice(1);
+
+  // Se passou da meta, mostre “extra”
+  if (remainingRaw < 0){
+    $("dashRemaining").textContent = `${Math.abs(Math.round(remainingRaw))} acima`;
+  }
+}
+
+/* ---------------- Settings UI ---------------- */
+function setupSettings(){
+  const input = $("targetKcal");
+  const btn = $("saveTarget");
+
+  input.value = getDailyTarget();
+
+  btn.addEventListener("click", () => {
+    const v = Number(input.value || 0);
+    if (v > 0) setDailyTarget(v);
+    renderDashboard();
+    setActiveScreen("home");
+  });
+}
+
+/* ---------------- Home quick add ---------------- */
+function setupQuickAdd(){
+  $("quickAddBtn").addEventListener("click", () => {
+    document.getElementById("quickAddKcal").focus();
+  });
+
+  $("quickAddSave").addEventListener("click", () => {
+    const v = Number($("quickAddKcal").value || 0);
+    if (v > 0){
+      quickAddKcal(v);
+      $("quickAddKcal").value = "";
+    }
+  });
+}
+
+/* ---------------- Misc buttons ---------------- */
+function setupButtons(){
+  $("suggest").addEventListener("click", () => suggestFromText($("desc").value));
+  $("addItem").addEventListener("click", () => addItem(FOODS[0].key, 1));
+  $("save").addEventListener("click", saveMeal);
+
+  $("reset").addEventListener("click", () => {
+    $("desc").value = "";
+    state.items = [];
+    renderItems();
+    renderQuickPortions([]);
+  });
+
+  $("clearHistory").addEventListener("click", () => {
+    setHistory([]);
+    renderHistory();
+    renderDashboard();
+  });
+}
+
+async function init(){
+  await loadFoods();
+
+  setupNav();
+  setupPhoto();
+  setupSettings();
+  setupQuickAdd();
+  setupButtons();
+
+  // tela inicial
+  setActiveScreen("home");
+
+  // inicia com 1 item na tela registrar
+  if (FOODS.length) addItem(FOODS[0].key, 1);
+
+  renderHistory();
+  renderDashboard();
+}
+
+init();

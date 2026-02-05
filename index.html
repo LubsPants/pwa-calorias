@@ -3,65 +3,142 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Calorias por Foto + Descrição</title>
-  <section class="card" id="portionBox"></section>
-  <meta name="theme-color" content="#111827" />
+  <title>Calorias (PWA)</title>
+  <meta name="theme-color" content="#FAB4BF" />
   <link rel="manifest" href="manifest.webmanifest" />
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="header">
-    <h1>🍛 Calorias (PWA)</h1>
-    <p>Foto opcional + descrição + porções simples.</p>
+  <header class="topbar">
+    <div class="topbarTitle">🍑 Calorias</div>
+    <div class="topbarSubtitle" id="todayLabel">Hoje</div>
   </header>
 
-  <main class="container">
-    <section class="card">
-      <h2>1) Foto (opcional)</h2>
-      <input id="photo" type="file" accept="image/*" capture="environment" />
-      <div class="previewWrap">
-        <img id="preview" alt="Prévia da foto" />
-        <button id="clearPhoto" class="ghost" type="button">Remover foto</button>
-      </div>
-    </section>
-
-    <section class="card">
-      <h2>2) Descrição</h2>
-      <textarea id="desc" rows="3" placeholder="Ex.: PF com arroz, feijão, frango grelhado e salada."></textarea>
-      <div class="row">
-        <button id="suggest" type="button">Sugerir itens</button>
-        <button id="reset" class="ghost" type="button">Limpar</button>
-      </div>
-      <p class="hint">Dica: escreva com palavras simples.</p>
-    </section>
-
-    <section class="card">
-      <h2>3) Itens e porções</h2>
-      <div id="items"></div>
-      <button id="addItem" class="ghost" type="button">+ Adicionar item manualmente</button>
-    </section>
-
-    <section class="card">
-      <h2>Resultado</h2>
-      <div class="result">
-        <div>
-          <div class="big" id="totalKcal">0 kcal</div>
-          <div class="muted" id="totalMacros">P 0g • C 0g • G 0g</div>
+  <main class="app">
+    <!-- ======= TAB: HOME / DASHBOARD ======= -->
+    <section class="screen" id="screen-home">
+      <div class="card hero">
+        <div class="heroRow">
+          <div>
+            <div class="heroKcal" id="dashConsumed">0</div>
+            <div class="muted">kcal consumidas hoje</div>
+          </div>
+          <div class="pill">
+            <div class="pillLabel">Meta</div>
+            <div class="pillValue"><span id="dashTarget">0</span> kcal</div>
+          </div>
         </div>
-        <button id="save" type="button">Salvar refeição</button>
+
+        <div class="progressWrap" aria-label="Progresso diário">
+          <div class="progressBar">
+            <div class="progressFill" id="dashFill" style="width:0%"></div>
+          </div>
+          <div class="progressMeta">
+            <span class="muted">Faltam <strong id="dashRemaining">0</strong> kcal</span>
+            <span class="muted"><strong id="dashPct">0</strong>%</span>
+          </div>
+        </div>
+
+        <div class="heroActions">
+          <button id="goRegister" type="button">Registrar refeição</button>
+          <button id="quickAddBtn" class="ghost" type="button">+ Adição rápida</button>
+        </div>
       </div>
 
-      <h3>Histórico (local)</h3>
-      <div id="history"></div>
+      <div class="card">
+        <h2>Adição rápida (kcal)</h2>
+        <div class="row">
+          <input id="quickAddKcal" type="number" min="0" step="10" placeholder="Ex.: 250" />
+          <button id="quickAddSave" type="button">Adicionar</button>
+        </div>
+        <p class="hint">Use para café, beliscos, ou quando não quiser detalhar itens.</p>
+      </div>
+    </section>
+
+    <!-- ======= TAB: REGISTER ======= -->
+    <section class="screen" id="screen-register">
+      <section class="card">
+        <h2>1) Foto (opcional)</h2>
+        <input id="photo" type="file" accept="image/*" capture="environment" />
+        <div class="previewWrap">
+          <img id="preview" alt="Prévia da foto" />
+          <button id="clearPhoto" class="ghost" type="button">Remover foto</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>2) Descrição</h2>
+        <textarea id="desc" rows="3" placeholder="Ex.: PF com arroz, feijão, frango e salada."></textarea>
+        <div class="row">
+          <button id="suggest" type="button">Sugerir itens</button>
+          <button id="reset" class="ghost" type="button">Limpar</button>
+        </div>
+        <p class="hint">Dica: arroz, feijão, frango, bife, salada, azeite…</p>
+      </section>
+
+      <section class="card" id="portionBox"></section>
+
+      <section class="card">
+        <h2>3) Itens e porções</h2>
+        <div id="items"></div>
+        <button id="addItem" class="ghost" type="button">+ Adicionar item</button>
+      </section>
+
+      <section class="card">
+        <h2>Resultado</h2>
+        <div class="result">
+          <div>
+            <div class="big" id="totalKcal">0 kcal</div>
+            <div class="muted" id="totalMacros">P 0g • C 0g • G 0g</div>
+          </div>
+          <button id="save" type="button">Salvar refeição</button>
+        </div>
+      </section>
+    </section>
+
+    <!-- ======= TAB: HISTORY ======= -->
+    <section class="screen" id="screen-history">
+      <section class="card">
+        <h2>Histórico</h2>
+        <div id="history"></div>
+        <button id="clearHistory" class="ghost" type="button">Limpar histórico</button>
+      </section>
+    </section>
+
+    <!-- ======= TAB: SETTINGS ======= -->
+    <section class="screen" id="screen-settings">
+      <section class="card">
+        <h2>Meta diária</h2>
+        <div class="row">
+          <input id="targetKcal" type="number" min="0" step="50" placeholder="Ex.: 1800" />
+          <button id="saveTarget" type="button">Salvar</button>
+        </div>
+        <p class="hint">O app calcula: consumido hoje, restante e progresso.</p>
+      </section>
+
+      <section class="card">
+        <h2>Dicas rápidas</h2>
+        <ul class="list">
+          <li><strong>Mais precisão:</strong> ajuste porções nos chips.</li>
+          <li><strong>Sem detalhar:</strong> use “Adição rápida”.</li>
+          <li><strong>Cache PWA:</strong> se ficar “versão velha”, aumente o CACHE no <code>sw.js</code>.</li>
+        </ul>
+      </section>
     </section>
   </main>
 
-  <footer class="footer">
-    <small>Estimativas. Porção manda no resultado. 🥄</small>
-  </footer>
+  <!-- Bottom Nav -->
+  <nav class="bottomNav" aria-label="Navegação">
+    <button class="navBtn active" data-screen="home" type="button">Início</button>
+    <button class="navBtn" data-screen="register" type="button">Registrar</button>
+    <button class="navBtn" data-screen="history" type="button">Histórico</button>
+    <button class="navBtn" data-screen="settings" type="button">Ajustes</button>
+  </nav>
 
   <script src="app.js"></script>
   <script>

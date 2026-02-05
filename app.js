@@ -61,21 +61,56 @@ function prettyUnit(u){
 /* ---------------- Tabs ---------------- */
 function setActiveScreen(name){
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
-  document.querySelectorAll(".navBtn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".navItem").forEach(b => b.classList.remove("active"));
 
   const screen = document.getElementById(`screen-${name}`);
   if (screen) screen.classList.add("active");
 
-  const btn = document.querySelector(`.navBtn[data-screen="${name}"]`);
+  const btn = document.querySelector(`.navItem[data-screen="${name}"]`);
   if (btn) btn.classList.add("active");
+
+  // no mobile, fecha o menu ao navegar
+  closeSidebar();
 }
+
+function openSidebar(){
+  const sb = document.getElementById("sidebar");
+  const bd = document.getElementById("backdrop");
+  if (window.matchMedia("(max-width: 900px)").matches){
+    sb.style.display = "block";
+    bd.style.display = "block";
+  }
+}
+
+function closeSidebar(){
+  const sb = document.getElementById("sidebar");
+  const bd = document.getElementById("backdrop");
+  if (window.matchMedia("(max-width: 900px)").matches){
+    sb.style.display = "none";
+    bd.style.display = "none";
+  }
+}
+
+function toggleSidebar(){
+  const sb = document.getElementById("sidebar");
+  const isOpen = sb.style.display === "block";
+  if (isOpen) closeSidebar();
+  else openSidebar();
+}
+
 function setupNav(){
-  document.querySelectorAll(".navBtn").forEach(btn => {
+  document.querySelectorAll(".navItem").forEach(btn => {
     btn.addEventListener("click", () => setActiveScreen(btn.dataset.screen));
   });
-  $("goRegister").addEventListener("click", () => setActiveScreen("register"));
-  $("editProfile").addEventListener("click", () => setActiveScreen("profile"));
+
+  document.getElementById("toggleNav").addEventListener("click", toggleSidebar);
+  document.getElementById("closeNav").addEventListener("click", closeSidebar);
+  document.getElementById("backdrop").addEventListener("click", closeSidebar);
+
+  // atalho do botão registrar
+  document.getElementById("goRegister").addEventListener("click", () => setActiveScreen("register"));
 }
+
 
 /* ---------------- Meta diária ---------------- */
 function getDailyTarget(){

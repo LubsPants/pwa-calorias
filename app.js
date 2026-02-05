@@ -102,21 +102,22 @@ function approxKcalPerGram(foodKey){
   return f.kcal / eq;
 }
 
-function prettyUnit(u){
-  const map = { gramas:"g" };
-  return map[u] || u;
-}
-
-/* ---------------- Tabs ---------------- */
 function setActiveScreen(name){
-  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active");
-  document.querySelectorAll(".navItem").forEach(b => b.classList.remove("active");
+  document.querySelectorAll(".screen").forEach(s => 
+    s.classList.remove("active")
+  );
+
+  document.querySelectorAll(".navItem").forEach(b => 
+    b.classList.remove("active")
+  );
 
   const screen = document.getElementById(`screen-${name}`);
   if (screen) screen.classList.add("active");
 
   const btn = document.querySelector(`.navItem[data-screen="${name}"]`);
   if (btn) btn.classList.add("active");
+}
+
 
   // no mobile, fecha o menu ao navegar
   closeSidebar();

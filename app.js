@@ -1,3 +1,8 @@
+function on(id, event, fn){
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener(event, fn);
+}
 let TACO = [];
 let FOODS = [];
 const $ = (id) => document.getElementById(id);

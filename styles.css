@@ -233,3 +233,17 @@ button.del{
   color:white;
   border-color:transparent;
 }
+.lab{display:block; font-size:12px; color:var(--muted); margin:0 0 6px;}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+.sep{height:1px; background:rgba(0,0,0,.08); margin:14px 0;}
+.cardSoft{
+  background:var(--peach-4);
+  border:1px solid rgba(0,0,0,.06);
+  border-radius:16px;
+  padding:12px;
+  margin-top:12px;
+}
+@media (max-width:720px){
+  .grid2{grid-template-columns:1fr;}
+}
+

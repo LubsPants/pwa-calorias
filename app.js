@@ -56,7 +56,7 @@ const state = {
 ========================= */
 async function loadTaco(){
   try{
-    const r = await fetch("./data/taco_min.json", { cache: "no-store" });
+   const r = await fetch("./taco_min.json", { cache: "no-store" });
     if (!r.ok) throw new Error("HTTP " + r.status);
     TACO = await r.json();
   }catch(e){

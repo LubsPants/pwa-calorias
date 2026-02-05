@@ -109,8 +109,8 @@ function prettyUnit(u){
 
 /* ---------------- Tabs ---------------- */
 function setActiveScreen(name){
-  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
-  document.querySelectorAll(".navItem").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active");
+  document.querySelectorAll(".navItem").forEach(b => b.classList.remove("active");
 
   const screen = document.getElementById(`screen-${name}`);
   if (screen) screen.classList.add("active");
@@ -149,7 +149,7 @@ function toggleSidebar(){
 
 function setupNav(){
   document.querySelectorAll(".navItem").forEach(btn => {
-    btn.addEventListener("click", () => setActiveScreen(btn.dataset.screen));
+    btn.addEventListener("click", () => setActiveScreen(btn.dataset.screen);
   });
 
   document.getElementById("toggleNav").addEventListener("click", toggleSidebar);
@@ -157,7 +157,7 @@ function setupNav(){
   document.getElementById("backdrop").addEventListener("click", closeSidebar);
 
   // atalho do botão registrar
-  document.getElementById("goRegister").addEventListener("click", () => setActiveScreen("register"));
+  document.getElementById("goRegister").addEventListener("click", () => setActiveScreen("register");
 }
 
 
@@ -167,7 +167,7 @@ function getDailyTarget(){
   return v > 0 ? v : 1800;
 }
 function setDailyTarget(v){
-  localStorage.setItem(STORAGE_TARGET, String(v));
+  localStorage.setItem(STORAGE_TARGET, String(v);
 }
 
 /* ---------------- Perfil + sugestão de meta ---------------- */
@@ -176,7 +176,7 @@ function getProfile(){
   catch { return null; }
 }
 function setProfile(p){
-  localStorage.setItem(STORAGE_PROFILE, JSON.stringify(p));
+  localStorage.setItem(STORAGE_PROFILE, JSON.stringify(p);
 }
 
 function activityFactor(code){
@@ -430,7 +430,7 @@ function renderItems(){
       renderTotalsUI();
     });
 
-    unitSel.addEventListener("change", ()=>renderTotalsUI());
+    unitSel.addEventListener("change", ()=>renderTotalsUI();
 
     delBtn.addEventListener("click",()=>{
       state.items.splice(idx,1);
@@ -502,9 +502,9 @@ function detectKeysFromText(text){
 function promptGramsFor(key){
   const f = foodByKey(key);
   const def = DEFAULT_GRAMS[key] || 100;
-  const v = prompt(`Quantos gramas de "${f?.label || key}"?`, String(def));
+  const v = prompt(`Quantos gramas de "${f?.label || key}"?`, String(def);
   if (v === null) return null;
-  const n = Number(String(v).replace(",", "."));
+  const n = Number(String(v).replace(",", ".");
   if (!isFinite(n) || n < 0) return null;
   return n;
 }
@@ -516,7 +516,7 @@ function recalcMealFromDescription(){
   const keys = detectKeysFromText(desc).filter(k => approxKcalPerGram(k) !== null);
 
   // mantém itens já existentes se ainda estão no texto
-  const existingMap = new Map(state.items.map(it => [it.foodKey, it.grams]));
+  const existingMap = new Map(state.items.map(it => [it.foodKey, it.grams]);
   const next = [];
 
   for (const key of keys){
@@ -553,7 +553,7 @@ function bestMatchSnack(text){
     if (k.hits.some(h=>t.includes(h))) return k.key;
   }
   // fallback: procura label
-  const byLabel = FOODS.find(f => f.label.toLowerCase().includes(t));
+  const byLabel = FOODS.find(f => f.label.toLowerCase().includes(t);
   return byLabel?.key || null;
 }
 
@@ -563,11 +563,11 @@ function getHistory(){
   catch { return []; }
 }
 function setHistory(arr){
-  localStorage.setItem(STORAGE_HISTORY, JSON.stringify(arr));
+  localStorage.setItem(STORAGE_HISTORY, JSON.stringify(arr);
 }
 
 function escapeHtml(s){
-  return (s||"").replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[c]));
+  return (s||"").replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[c]);
 }
 
 function saveMealToHistory({desc, photo, items, kcalOverride=null}){
@@ -584,7 +584,7 @@ function saveMealToHistory({desc, photo, items, kcalOverride=null}){
 
   const history = getHistory();
   history.unshift(entry);
-  setHistory(history.slice(0, 80));
+  setHistory(history.slice(0, 80);
 }
 
 function saveMeal(){
@@ -653,7 +653,7 @@ function renderHistory(){
 
   for (const h of history){
     const dt=new Date(h.ts);
-    const kcal=Math.round(Number(h.kcal||0));
+    const kcal=Math.round(Number(h.kcal||0);
     const div=document.createElement("div");
     div.className="histCard";
     div.innerHTML = `
@@ -737,7 +737,7 @@ document.getElementById("snackAdd").addEventListener("click", () => {
   const gramsStr = prompt(`Quantos gramas de "${item.label}"?`, "30");
   if (gramsStr === null) return;
 
-  const grams = Number(String(gramsStr).replace(",", "."));
+  const grams = Number(String(gramsStr).replace(",", ".");
   if (!isFinite(grams) || grams < 0) return;
 
   // calcula kcal

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Calorias por Foto + Descrição</title>
+  <meta name="theme-color" content="#111827" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="header">
+    <h1>🍛 Calorias (PWA)</h1>
+    <p>Foto opcional + descrição + porções simples.</p>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2>1) Foto (opcional)</h2>
+      <input id="photo" type="file" accept="image/*" capture="environment" />
+      <div class="previewWrap">
+        <img id="preview" alt="Prévia da foto" />
+        <button id="clearPhoto" class="ghost" type="button">Remover foto</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>2) Descrição</h2>
+      <textarea id="desc" rows="3" placeholder="Ex.: PF com arroz, feijão, frango grelhado e salada."></textarea>
+      <div class="row">
+        <button id="suggest" type="button">Sugerir itens</button>
+        <button id="reset" class="ghost" type="button">Limpar</button>
+      </div>
+      <p class="hint">Dica: escreva com palavras simples.</p>
+    </section>
+
+    <section class="card">
+      <h2>3) Itens e porções</h2>
+      <div id="items"></div>
+      <button id="addItem" class="ghost" type="button">+ Adicionar item manualmente</button>
+    </section>
+
+    <section class="card">
+      <h2>Resultado</h2>
+      <div class="result">
+        <div>
+          <div class="big" id="totalKcal">0 kcal</div>
+          <div class="muted" id="totalMacros">P 0g • C 0g • G 0g</div>
+        </div>
+        <button id="save" type="button">Salvar refeição</button>
+      </div>
+
+      <h3>Histórico (local)</h3>
+      <div id="history"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <small>Estimativas. Porção manda no resultado. 🥄</small>
+  </footer>
+
+  <script src="app.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./sw.js");
+    }
+  </script>
+</body>
+</html>

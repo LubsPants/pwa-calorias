@@ -1,30 +1,12 @@
+/* =========================
+   Helpers seguros (não quebra)
+========================= */
 function on(id, event, fn){
   const el = document.getElementById(id);
   if (!el) return;
   el.addEventListener(event, fn);
 }
-let TACO = [];
-let FOODS = [];
 const $ = (id) => document.getElementById(id);
-
-const STORAGE_TARGET = "dailyTargetKcal";
-const STORAGE_HISTORY = "mealHistory";
-const STORAGE_PROFILE = "userProfileV1";
-
-const state = {
-  items: [],
-  photoDataUrl: null,
-  autoTimer: null
-};
-async function loadTaco(){
-  try{
-    const r = await fetch("./data/taco_min.json", { cache: "no-store" });
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    TACO = await r.json();
-  }catch(e){
-    TACO = [];
-  }
-}
 
 function normalize(s){
   return (s||"")
@@ -35,6 +17,70 @@ function normalize(s){
     .trim();
 }
 
+function round1(n){ return Math.round((n||0)*10)/10; }
+
+function todayKey(d=new Date()){
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,"0");
+  const da=String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${da}`;
+}
+
+function escapeHtml(s){
+  return (s||"").replace(/[&<>"']/g, (c)=>(
+    { "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[c]
+  ));
+}
+
+/* =========================
+   Storage
+========================= */
+const STORAGE_TARGET  = "dailyTargetKcal";
+const STORAGE_HISTORY = "mealHistory";
+const STORAGE_PROFILE = "userProfileV1";
+
+/* =========================
+   Estado + Bases
+========================= */
+let TACO = [];   // vem do JSON gerado da TACO
+let FOODS = [];  // sua lista local foods.json (opcional)
+
+const state = {
+  items: [],          // itens do registrar refeição (manual/detectado)
+  photoDataUrl: null,
+  autoTimer: null
+};
+
+/* =========================
+   Carregamento de dados
+========================= */
+async function loadTaco(){
+  try{
+    const r = await fetch("./data/taco_min.json", { cache: "no-store" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    TACO = await r.json();
+  }catch(e){
+    TACO = [];
+  }
+}
+
+async function loadFoods(){
+  try{
+    const r = await fetch("./foods.json", { cache: "no-store" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    FOODS = await r.json();
+  }catch(e){
+    FOODS = [];
+  }
+}
+
+function foodByKey(key){
+  return FOODS.find(f => f.key === key);
+}
+
+/* =========================
+   Busca TACO (para Beliscos)
+========================= */
 function tacoSearchOne(query){
   const q = normalize(query);
   if (!q || !TACO.length) return null;
@@ -60,124 +106,86 @@ function tacoPerGram(item){
   };
 }
 
-function round1(n){ return Math.round(n*10)/10; }
-function todayKey(d=new Date()){
-  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,"0"), da=String(d.getDate()).padStart(2,"0");
-  return `${y}-${m}-${da}`;
+/* =========================
+   Navegação / Sidebar
+========================= */
+function openSidebar(){
+  const sb = $("sidebar");
+  const bd = $("backdrop");
+  if (!sb || !bd) return;
+
+  if (window.matchMedia("(max-width: 900px)").matches){
+    sb.style.display = "block";
+    bd.style.display = "block";
+    bd.classList.add("isOn");
+  }
 }
 
-async function loadFoods(){
-  FOODS = await (await fetch("./foods.json")).json();
+function closeSidebar(){
+  const sb = $("sidebar");
+  const bd = $("backdrop");
+  if (!sb || !bd) return;
+
+  if (window.matchMedia("(max-width: 900px)").matches){
+    sb.style.display = "none";
+    bd.style.display = "none";
+    bd.classList.remove("isOn");
+  }
 }
-function foodByKey(key){ return FOODS.find(f => f.key === key); }
 
-/* --- Equivalências para permitir "perguntar só gramas" --- */
-/* Se um item não é "por grama", a gente converte com uma aproximação. */
-const GRAM_EQUIV = {
-  unidade: {
-    banana: 118, maca: 182, ovo: 50, pao_frances: 50
-  },
-  colher_sopa: {
-    arroz: 25, arroz_integral: 25
-  },
-  concha: {
-    feijao: 100, feijao_preto: 100
-  },
-  tigela: { salada: 150 },
-  colher_cha: { azeite: 5, acucar: 4 },
-  pote: { iogurte: 170 },
-  xicara: { cafe_sem_acucar: 50 }
-};
-
-function approxKcalPerGram(foodKey){
-  const f = foodByKey(foodKey);
-  if (!f) return null;
-
-  if (f.unit === "gramas") return f.kcal; // já é por grama
-
-  const eq = GRAM_EQUIV[f.unit]?.[foodKey];
-  if (!eq) return null;
-
-  // f.kcal é por unidade/colher/concha/etc. Converte para por grama.
-  return f.kcal / eq;
+function toggleSidebar(){
+  const sb = $("sidebar");
+  if (!sb) return;
+  const isOpen = sb.style.display === "block";
+  if (isOpen) closeSidebar();
+  else openSidebar();
 }
 
 function setActiveScreen(name){
-  document.querySelectorAll(".screen").forEach(s => 
-    s.classList.remove("active")
-  );
-
-  document.querySelectorAll(".navItem").forEach(b => 
-    b.classList.remove("active")
-  );
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.querySelectorAll(".navItem").forEach(b => b.classList.remove("active"));
 
   const screen = document.getElementById(`screen-${name}`);
   if (screen) screen.classList.add("active");
 
   const btn = document.querySelector(`.navItem[data-screen="${name}"]`);
   if (btn) btn.classList.add("active");
-}
 
-
-  // no mobile, fecha o menu ao navegar
   closeSidebar();
-}
-
-function openSidebar(){
-  const sb = document.getElementById("sidebar");
-  const bd = document.getElementById("backdrop");
-  if (window.matchMedia("(max-width: 900px)").matches){
-    sb.style.display = "block";
-    bd.style.display = "block";
-  }
-}
-
-function closeSidebar(){
-  const sb = document.getElementById("sidebar");
-  const bd = document.getElementById("backdrop");
-  if (window.matchMedia("(max-width: 900px)").matches){
-    sb.style.display = "none";
-    bd.style.display = "none";
-  }
-}
-
-function toggleSidebar(){
-  const sb = document.getElementById("sidebar");
-  const isOpen = sb.style.display === "block";
-  if (isOpen) closeSidebar();
-  else openSidebar();
 }
 
 function setupNav(){
   document.querySelectorAll(".navItem").forEach(btn => {
-    btn.addEventListener("click", () => setActiveScreen(btn.dataset.screen);
+    btn.addEventListener("click", () => setActiveScreen(btn.dataset.screen));
   });
 
-  document.getElementById("toggleNav").addEventListener("click", toggleSidebar);
-  document.getElementById("closeNav").addEventListener("click", closeSidebar);
-  document.getElementById("backdrop").addEventListener("click", closeSidebar);
+  on("toggleNav", "click", toggleSidebar);
+  on("closeNav", "click", closeSidebar);
+  on("backdrop", "click", closeSidebar);
 
-  // atalho do botão registrar
-  document.getElementById("goRegister").addEventListener("click", () => setActiveScreen("register");
+  on("goRegister", "click", () => setActiveScreen("register"));
 }
 
-
-/* ---------------- Meta diária ---------------- */
+/* =========================
+   Meta diária
+========================= */
 function getDailyTarget(){
   const v = Number(localStorage.getItem(STORAGE_TARGET) || 0);
   return v > 0 ? v : 1800;
 }
 function setDailyTarget(v){
-  localStorage.setItem(STORAGE_TARGET, String(v);
+  localStorage.setItem(STORAGE_TARGET, String(v));
 }
 
-/* ---------------- Perfil + sugestão de meta ---------------- */
+/* =========================
+   Perfil + sugestão
+========================= */
 function getProfile(){
   try { return JSON.parse(localStorage.getItem(STORAGE_PROFILE) || "null"); }
   catch { return null; }
 }
 function setProfile(p){
-  localStorage.setItem(STORAGE_PROFILE, JSON.stringify(p);
+  localStorage.setItem(STORAGE_PROFILE, JSON.stringify(p));
 }
 
 function activityFactor(code){
@@ -191,18 +199,15 @@ function activityFactor(code){
   return map[code] || 1.2;
 }
 
-// Mifflin-St Jeor (aprox). other -> usa female como base.
 function bmrMifflin({sex, weightKg, heightCm, age}){
   const s = (sex === "male") ? 5 : -161;
   return 10*weightKg + 6.25*heightCm - 5*age + s;
 }
 
-// Ajuste de objetivo por horizonte (bem conservador)
 function goalAdjustmentKcal(goal, horizon){
-  // negative para perder, positive para ganhar
   const base = {
-    weekly:  { lose: -400, maintain: 0, gain: +250 },
-    monthly: { lose: -300, maintain: 0, gain: +200 },
+    weekly:   { lose: -400, maintain: 0, gain: +250 },
+    monthly:  { lose: -300, maintain: 0, gain: +200 },
     quarterly:{ lose: -200, maintain: 0, gain: +150 }
   };
   return (base[horizon] && base[horizon][goal]) ?? 0;
@@ -219,77 +224,71 @@ function suggestTargetFromProfile(p){
   const adj = goalAdjustmentKcal(p.goal, p.horizon);
   const suggested = Math.round(tdee + adj);
 
-  return {
-    bmr: Math.round(bmr),
-    tdee: Math.round(tdee),
-    suggested
-  };
+  return { bmr: Math.round(bmr), tdee: Math.round(tdee), suggested };
 }
 
 function setupProfile(){
-  $("pfSave").addEventListener("click", () => {
+  on("pfSave", "click", () => {
     const p = {
-      name: $("pfName").value.trim(),
-      age: Number($("pfAge").value || 0),
-      sex: $("pfSex").value,
-      weightKg: Number($("pfWeight").value || 0),
-      heightCm: Number($("pfHeight").value || 0),
-      leanKg: Number($("pfLean").value || 0),
-      bfPct: Number($("pfBf").value || 0),
-      activity: $("pfActivity").value,
-      goal: $("pfGoal").value,
-      horizon: $("pfHorizon").value
+      name: $("pfName")?.value?.trim() || "",
+      age: Number($("pfAge")?.value || 0),
+      sex: $("pfSex")?.value || "female",
+      weightKg: Number($("pfWeight")?.value || 0),
+      heightCm: Number($("pfHeight")?.value || 0),
+      leanKg: Number($("pfLean")?.value || 0),
+      bfPct: Number($("pfBf")?.value || 0),
+      activity: $("pfActivity")?.value || "sedentary",
+      goal: $("pfGoal")?.value || "maintain",
+      horizon: $("pfHorizon")?.value || "monthly"
     };
 
-    // validação mínima
+    const box = $("pfSuggestion");
     if (!p.age || !p.weightKg || !p.heightCm){
-      const box = $("pfSuggestion");
-      box.style.display = "block";
-      box.innerHTML = `<strong>Faltou preencher idade, peso e altura.</strong><div class="muted">Sem isso eu não consigo sugerir kcal com segurança.</div>`;
+      if (box){
+        box.style.display = "block";
+        box.innerHTML = `<strong>Faltou preencher idade, peso e altura.</strong><div class="muted">Sem isso eu não consigo sugerir kcal com segurança.</div>`;
+      }
       return;
     }
 
     setProfile(p);
 
     const s = suggestTargetFromProfile(p);
-    const box = $("pfSuggestion");
-    box.style.display = "block";
-    box.innerHTML = `
-      <div><strong>Sugestão de meta diária:</strong> ${s.suggested} kcal</div>
-      <div class="muted">Estimativa: BMR ${s.bmr} • gasto diário (TDEE) ${s.tdee} • ajuste objetivo ${s.suggested - s.tdee} kcal</div>
-      <div class="muted">Você pode ajustar a meta em Ajustes quando quiser.</div>
-    `;
+    if (box){
+      box.style.display = "block";
+      box.innerHTML = `
+        <div><strong>Sugestão de meta diária:</strong> ${s.suggested} kcal</div>
+        <div class="muted">Estimativa: BMR ${s.bmr} • gasto diário (TDEE) ${s.tdee} • ajuste objetivo ${s.suggested - s.tdee} kcal</div>
+        <div class="muted">Você pode ajustar a meta em Ajustes quando quiser.</div>
+      `;
+    }
 
-    // aplica a sugestão, mas mantém editável depois
     setDailyTarget(s.suggested);
-    $("targetKcal").value = s.suggested;
+    if ($("targetKcal")) $("targetKcal").value = s.suggested;
 
     renderDashboard();
-    setActiveScreen("home");
-  });
-
-  $("pfSkip").addEventListener("click", () => {
-    // não salva, só segue
     setActiveScreen("home");
   });
 
   // Se já existe perfil, preenche campos
   const p = getProfile();
   if (p){
-    $("pfName").value = p.name || "";
-    $("pfAge").value = p.age || "";
-    $("pfSex").value = p.sex || "female";
-    $("pfWeight").value = p.weightKg || "";
-    $("pfHeight").value = p.heightCm || "";
-    $("pfLean").value = p.leanKg || "";
-    $("pfBf").value = p.bfPct || "";
-    $("pfActivity").value = p.activity || "sedentary";
-    $("pfGoal").value = p.goal || "maintain";
-    $("pfHorizon").value = p.horizon || "monthly";
+    if ($("pfName")) $("pfName").value = p.name || "";
+    if ($("pfAge")) $("pfAge").value = p.age || "";
+    if ($("pfSex")) $("pfSex").value = p.sex || "female";
+    if ($("pfWeight")) $("pfWeight").value = p.weightKg || "";
+    if ($("pfHeight")) $("pfHeight").value = p.heightCm || "";
+    if ($("pfLean")) $("pfLean").value = p.leanKg || "";
+    if ($("pfBf")) $("pfBf").value = p.bfPct || "";
+    if ($("pfActivity")) $("pfActivity").value = p.activity || "sedentary";
+    if ($("pfGoal")) $("pfGoal").value = p.goal || "maintain";
+    if ($("pfHorizon")) $("pfHorizon").value = p.horizon || "monthly";
   }
 }
 
-/* ---------------- Foto opcional com compressão ---------------- */
+/* =========================
+   Foto opcional (pode esconder)
+========================= */
 async function compressImage(file, maxW=1280, quality=0.75){
   const dataUrl = await new Promise((res) => {
     const r=new FileReader();
@@ -312,34 +311,37 @@ async function compressImage(file, maxW=1280, quality=0.75){
   return canvas.toDataURL("image/jpeg", quality);
 }
 
-function setupPhoto(){
-  function setupPhotoToggle(){
-  const btn = document.getElementById("togglePhoto");
-  const wrap = document.getElementById("photoWrap");
-  if (!btn || !wrap) return;
+function setupPhotoToggle(){
+  on("togglePhoto", "click", () => {
+    const wrap = $("photoWrap");
+    const btn = $("togglePhoto");
+    if (!wrap || !btn) return;
 
-  btn.addEventListener("click", () => {
     const open = wrap.style.display === "block";
     wrap.style.display = open ? "none" : "block";
     btn.textContent = open ? "Adicionar foto (opcional)" : "Esconder foto";
   });
 }
-  const input=$("photo");
-  const preview=$("preview");
+
+function setupPhoto(){
+  setupPhotoToggle();
+
+  const input = $("photo");
+  const preview = $("preview");
+  if (!input || !preview) return;
 
   input.addEventListener("change", async () => {
-    const file=input.files?.[0];
+    const file = input.files?.[0];
     if (!file) return;
 
     state.photoDataUrl = await compressImage(file, 1280, 0.75);
     preview.src = state.photoDataUrl;
     preview.style.display="block";
 
-    // se já tem descrição, recalcula
     scheduleAutoCalc();
   });
 
-  $("clearPhoto").addEventListener("click", () => {
+  on("clearPhoto", "click", () => {
     state.photoDataUrl=null;
     preview.src="";
     preview.style.display="none";
@@ -347,104 +349,10 @@ function setupPhoto(){
   });
 }
 
-/* ---------------- Itens (agora focado em gramas) ---------------- */
-function addItem(foodKey, grams){
-  state.items.push({ foodKey, grams: Number(grams || 0) });
-  renderItems();
-}
-
-function computeMealTotals(items){
-  let kcal=0, p=0, c=0, g=0;
-
-  for (const it of items){
-    const f = foodByKey(it.foodKey);
-    if (!f) continue;
-
-    const perGram = approxKcalPerGram(it.foodKey);
-    if (!perGram) continue;
-
-    const factor = Number(it.grams || 0);
-    kcal += perGram * factor;
-
-    // macros: também converter para por grama
-    // se f.unit != gramas, converte pelos equivalentes
-    let ppg = f.p, cpg = f.c, gpg = f.g;
-    if (f.unit !== "gramas"){
-      const eq = GRAM_EQUIV[f.unit]?.[it.foodKey];
-      if (eq){
-        ppg = f.p / eq;
-        cpg = f.c / eq;
-        gpg = f.g / eq;
-      } else {
-        // sem equivalente, ignora macros
-        ppg = 0; cpg = 0; gpg = 0;
-      }
-    }
-
-    p += ppg * factor;
-    c += cpg * factor;
-    g += gpg * factor;
-  }
-
-  return {kcal, p, c, g};
-}
-
-function renderTotalsUI(){
-  const t = computeMealTotals(state.items);
-  $("totalKcal").textContent = `${Math.round(t.kcal)} kcal`;
-  $("totalMacros").textContent = `P ${round1(t.p)}g • C ${round1(t.c)}g • G ${round1(t.g)}g`;
-}
-
-function renderItems(){
-  const wrap=$("items");
-  wrap.innerHTML="";
-
-  if (!state.items.length){
-    wrap.innerHTML = `<p class="muted">Digite a descrição e eu vou montar os itens. Você também pode adicionar manualmente.</p>`;
-    renderTotalsUI();
-    return;
-  }
-
-  state.items.forEach((it, idx) => {
-    const f = foodByKey(it.foodKey);
-
-    const row=document.createElement("div");
-    row.className="itemRow";
-    row.innerHTML=`
-      <select aria-label="Alimento">
-        ${FOODS.map(x=>`<option value="${x.key}" ${x.key===it.foodKey?"selected":""}>${x.label}</option>`).join("")}
-      </select>
-      <input aria-label="Gramas" type="number" min="0" step="1" value="${it.grams}" />
-      <select aria-label="Unidade"><option selected>g</option></select>
-      <button class="del" type="button" title="Remover">✕</button>
-    `;
-
-    const [foodSel, gramsInp, unitSel, delBtn] = row.children;
-
-    foodSel.addEventListener("change", (e)=>{
-      it.foodKey = e.target.value;
-      renderItems();
-    });
-
-    gramsInp.addEventListener("input",(e)=>{
-      it.grams = Number(e.target.value || 0);
-      renderTotalsUI();
-    });
-
-    unitSel.addEventListener("change", ()=>renderTotalsUI();
-
-    delBtn.addEventListener("click",()=>{
-      state.items.splice(idx,1);
-      renderItems();
-    });
-
-    wrap.appendChild(row);
-  });
-
-  renderTotalsUI();
-}
-
-/* ---------------- Detecção por texto + perguntar só gramas ---------------- */
+/* =========================
+   Itens do Registrar (descrição -> perguntar gramas)
+   (aqui usa sua lista FOODS/keywords, não a TACO)
+========================= */
 const KEYWORDS = [
   { key:"arroz", hits:["arroz"] },
   { key:"arroz_integral", hits:["arroz integral"] },
@@ -467,7 +375,6 @@ const KEYWORDS = [
   { key:"chocolate", hits:["chocolate"] }
 ];
 
-// sugestão inicial de gramas
 const DEFAULT_GRAMS = {
   arroz: 100,
   arroz_integral: 100,
@@ -496,28 +403,115 @@ function detectKeysFromText(text){
   for (const k of KEYWORDS){
     if (k.hits.some(h=>t.includes(h))) found.push(k.key);
   }
-  // remove duplicados
   return [...new Set(found)];
 }
 
 function promptGramsFor(key){
   const f = foodByKey(key);
   const def = DEFAULT_GRAMS[key] || 100;
-  const v = prompt(`Quantos gramas de "${f?.label || key}"?`, String(def);
+
+  const v = prompt(`Quantos gramas de "${f?.label || key}"?`, String(def));
   if (v === null) return null;
-  const n = Number(String(v).replace(",", ".");
+
+  const n = Number(String(v).replace(",", "."));
   if (!isFinite(n) || n < 0) return null;
+
   return n;
 }
 
+function addItem(foodKey, grams){
+  state.items.push({ foodKey, grams: Number(grams || 0) });
+  renderItems();
+}
+
+function computeMealTotals(items){
+  let kcal=0, p=0, c=0, g=0;
+
+  for (const it of items){
+    const f = foodByKey(it.foodKey);
+    if (!f) continue;
+
+    // Aqui assume que FOODS tem kcal/p/c/g por "gramas" OU por unidade.
+    // Se sua FOODS já está por grama, ótimo.
+    const grams = Number(it.grams || 0);
+
+    if (f.unit === "gramas"){
+      kcal += (Number(f.kcal)||0) * grams;
+      p    += (Number(f.p)||0)   * grams;
+      c    += (Number(f.c)||0)   * grams;
+      g    += (Number(f.g)||0)   * grams;
+    } else {
+      // fallback simples: se não for por gramas, não calcula bem.
+      // Você pode melhorar depois com equivalências.
+      kcal += 0;
+    }
+  }
+
+  return {kcal, p, c, g};
+}
+
+function renderTotalsUI(){
+  const t = computeMealTotals(state.items);
+  if ($("totalKcal")) $("totalKcal").textContent = `${Math.round(t.kcal)} kcal`;
+  if ($("totalMacros")) $("totalMacros").textContent = `P ${round1(t.p)}g • C ${round1(t.c)}g • G ${round1(t.g)}g`;
+}
+
+function renderItems(){
+  const wrap=$("items");
+  if (!wrap) return;
+
+  wrap.innerHTML="";
+
+  if (!state.items.length){
+    wrap.innerHTML = `<p class="muted">Digite a descrição e eu vou montar os itens. Você também pode adicionar manualmente.</p>`;
+    renderTotalsUI();
+    return;
+  }
+
+  state.items.forEach((it, idx) => {
+    const row=document.createElement("div");
+    row.className="itemRow";
+    row.innerHTML=`
+      <select aria-label="Alimento">
+        ${FOODS.map(x=>`<option value="${x.key}" ${x.key===it.foodKey?"selected":""}>${x.label}</option>`).join("")}
+      </select>
+      <input aria-label="Gramas" type="number" min="0" step="1" value="${it.grams}" />
+      <select aria-label="Unidade"><option selected>g</option></select>
+      <button class="del" type="button" title="Remover">✕</button>
+    `;
+
+    const [foodSel, gramsInp, unitSel, delBtn] = row.children;
+
+    foodSel.addEventListener("change", (e)=>{
+      it.foodKey = e.target.value;
+      renderItems();
+    });
+
+    gramsInp.addEventListener("input",(e)=>{
+      it.grams = Number(e.target.value || 0);
+      renderTotalsUI();
+    });
+
+    unitSel.addEventListener("change", ()=>renderTotalsUI());
+
+    delBtn.addEventListener("click",()=>{
+      state.items.splice(idx,1);
+      renderItems();
+    });
+
+    wrap.appendChild(row);
+  });
+
+  renderTotalsUI();
+}
+
 function recalcMealFromDescription(){
-  const desc = $("desc").value.trim();
+  const desc = $("desc")?.value?.trim() || "";
   if (!desc) return;
 
-  const keys = detectKeysFromText(desc).filter(k => approxKcalPerGram(k) !== null);
+  const keys = detectKeysFromText(desc).filter(k => foodByKey(k));
 
-  // mantém itens já existentes se ainda estão no texto
-  const existingMap = new Map(state.items.map(it => [it.foodKey, it.grams]);
+  const existingMap = new Map(state.items.map(it => [it.foodKey, it.grams]));
   const next = [];
 
   for (const key of keys){
@@ -528,7 +522,6 @@ function recalcMealFromDescription(){
   state.items = next;
   renderItems();
 
-  // pedir gramas só para itens novos ou zerados
   for (const it of state.items){
     if (!it.grams || it.grams === 0){
       const grams = promptGramsFor(it.foodKey);
@@ -541,38 +534,24 @@ function recalcMealFromDescription(){
 
 function scheduleAutoCalc(){
   clearTimeout(state.autoTimer);
-  state.autoTimer = setTimeout(() => {
-    recalcMealFromDescription();
-  }, 450);
+  state.autoTimer = setTimeout(() => recalcMealFromDescription(), 450);
 }
 
-/* ---------------- Beliscos ---------------- */
-function bestMatchSnack(text){
-  const t=(text||"").toLowerCase();
-  // procura por hits primeiro
-  for (const k of KEYWORDS){
-    if (k.hits.some(h=>t.includes(h))) return k.key;
-  }
-  // fallback: procura label
-  const byLabel = FOODS.find(f => f.label.toLowerCase().includes(t);
-  return byLabel?.key || null;
-}
-
-/* ---------------- Histórico + Dashboard ---------------- */
+/* =========================
+   Histórico + Dashboard
+========================= */
 function getHistory(){
   try { return JSON.parse(localStorage.getItem(STORAGE_HISTORY) || "[]"); }
   catch { return []; }
 }
 function setHistory(arr){
-  localStorage.setItem(STORAGE_HISTORY, JSON.stringify(arr);
-}
-
-function escapeHtml(s){
-  return (s||"").replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[c]);
+  localStorage.setItem(STORAGE_HISTORY, JSON.stringify(arr));
 }
 
 function saveMealToHistory({desc, photo, items, kcalOverride=null}){
-  const totals = (kcalOverride !== null) ? {kcal: kcalOverride, p:0,c:0,g:0} : computeMealTotals(items);
+  const totals = (kcalOverride !== null)
+    ? {kcal: kcalOverride, p:0,c:0,g:0}
+    : computeMealTotals(items);
 
   const entry = {
     ts: new Date().toISOString(),
@@ -585,26 +564,7 @@ function saveMealToHistory({desc, photo, items, kcalOverride=null}){
 
   const history = getHistory();
   history.unshift(entry);
-  setHistory(history.slice(0, 80);
-}
-
-function saveMeal(){
-  const desc = $("desc").value.trim() || "Refeição";
-  saveMealToHistory({
-    desc,
-    photo: state.photoDataUrl,
-    items: state.items
-  });
-
-  // limpa
-  $("desc").value="";
-  state.items=[];
-  renderItems();
-  renderPortionBox([]);
-
-  renderHistory();
-  renderDashboard();
-  setActiveScreen("home");
+  setHistory(history.slice(0, 80));
 }
 
 function sumConsumedForDay(dayStr){
@@ -618,6 +578,8 @@ function sumConsumedForDay(dayStr){
 }
 
 function renderDashboard(){
+  if (!$("dashConsumed")) return;
+
   const target = getDailyTarget();
   const day = todayKey();
   const consumed = sumConsumedForDay(day);
@@ -626,25 +588,29 @@ function renderDashboard(){
   const pct = target>0 ? Math.min(100, Math.round((consumed/target)*100)) : 0;
 
   $("dashConsumed").textContent = Math.round(consumed);
-  $("dashTarget").textContent = Math.round(target);
-  $("dashFill").style.width = `${pct}%`;
-  $("dashPct").textContent = pct;
+  if ($("dashTarget")) $("dashTarget").textContent = Math.round(target);
+  if ($("dashFill")) $("dashFill").style.width = `${pct}%`;
+  if ($("dashPct")) $("dashPct").textContent = pct;
 
   const remainingEl = $("dashRemaining");
-  if (remainingRaw >= 0){
-    remainingEl.textContent = Math.round(remainingRaw);
-  } else {
-    remainingEl.textContent = `${Math.abs(Math.round(remainingRaw))} acima`;
+  if (remainingEl){
+    remainingEl.textContent = (remainingRaw >= 0)
+      ? Math.round(remainingRaw)
+      : `${Math.abs(Math.round(remainingRaw))} acima`;
   }
 
-  const d=new Date();
-  const label=d.toLocaleDateString("pt-BR",{weekday:"long", day:"2-digit", month:"short"});
-  $("todayLabel").textContent = label.charAt(0).toUpperCase()+label.slice(1);
+  if ($("todayLabel")){
+    const d=new Date();
+    const label=d.toLocaleDateString("pt-BR",{weekday:"long", day:"2-digit", month:"short"});
+    $("todayLabel").textContent = label.charAt(0).toUpperCase()+label.slice(1);
+  }
 }
 
 function renderHistory(){
-  const history=getHistory();
   const wrap=$("history");
+  if (!wrap) return;
+
+  const history=getHistory();
   wrap.innerHTML="";
 
   if (!history.length){
@@ -654,7 +620,8 @@ function renderHistory(){
 
   for (const h of history){
     const dt=new Date(h.ts);
-    const kcal=Math.round(Number(h.kcal||0);
+    const kcal = Math.round(Number(h.kcal || 0));
+
     const div=document.createElement("div");
     div.className="histCard";
     div.innerHTML = `
@@ -666,48 +633,58 @@ function renderHistory(){
   }
 }
 
-/* ---------------- Portion box (agora só informativo) ---------------- */
-function renderPortionBox(keys){
-  const box = $("portionBox");
-  if (!box) return;
-  if (!keys || !keys.length){ box.innerHTML=""; return; }
-
-  box.innerHTML = `
-    <h2>Itens detectados</h2>
-    <p class="muted">Eu vou pedir somente os gramas para cada item detectado.</p>
-  `;
-}
-
-/* ---------------- Settings ---------------- */
+/* =========================
+   Settings (meta diária)
+========================= */
 function setupSettings(){
   const input = $("targetKcal");
-  input.value = getDailyTarget();
+  if (input) input.value = getDailyTarget();
 
-  $("saveTarget").addEventListener("click", () => {
-    const v = Number(input.value || 0);
+  on("saveTarget", "click", () => {
+    const v = Number(input?.value || 0);
     if (v > 0) setDailyTarget(v);
     renderDashboard();
     setActiveScreen("home");
   });
 }
 
-/* ---------------- Botões / Eventos ---------------- */
-function setupButtons(){
-  $("save").addEventListener("click", saveMeal);
-
-  $("reset").addEventListener("click", () => {
-    $("desc").value="";
-    state.items=[];
-    renderItems();
-    renderPortionBox([]);
+/* =========================
+   Salvar refeição
+========================= */
+function saveMeal(){
+  const desc = $("desc")?.value?.trim() || "Refeição";
+  saveMealToHistory({
+    desc,
+    photo: state.photoDataUrl,
+    items: state.items
   });
 
-  $("suggest").addEventListener("click", () => {
+  if ($("desc")) $("desc").value="";
+  state.items=[];
+  renderItems();
+
+  renderHistory();
+  renderDashboard();
+  setActiveScreen("home");
+}
+
+/* =========================
+   Botões / Eventos
+========================= */
+function setupButtons(){
+  on("save", "click", saveMeal);
+
+  on("reset", "click", () => {
+    if ($("desc")) $("desc").value="";
+    state.items=[];
+    renderItems();
+  });
+
+  on("suggest", "click", () => {
     recalcMealFromDescription();
   });
 
-  $("addItem").addEventListener("click", () => {
-    // adiciona um item genérico e pergunta gramas
+  on("addItem", "click", () => {
     const key = FOODS[0]?.key;
     if (!key) return;
     const grams = promptGramsFor(key);
@@ -715,77 +692,54 @@ function setupButtons(){
     addItem(key, grams);
   });
 
-  // Auto: recalcula quando digitar descrição
-  $("desc").addEventListener("input", () => {
+  on("desc", "input", () => {
     scheduleAutoCalc();
   });
 
-  // Beliscos
-document.getElementById("snackAdd").addEventListener("click", () => {
+  // Beliscos usando TACO
+  on("snackAdd", "click", () => {
+    const text = $("snackDesc")?.value?.trim() || "";
+    if (!text) return;
 
-  const text = document.getElementById("snackDesc").value.trim();
-  if (!text) return;
+    const item = tacoSearchOne(text);
+    if (!item){
+      alert("Não encontrei na TACO. Tente algo mais simples (ex.: 'biscoito', 'chocolate', 'pão').");
+      return;
+    }
 
-  // procura na TACO
-  const item = tacoSearchOne(text);
+    const gramsStr = prompt(`Quantos gramas de "${item.label}"?`, "30");
+    if (gramsStr === null) return;
 
-  if (!item){
-    alert("Não encontrei na TACO. Tente algo mais simples (ex.: 'biscoito', 'chocolate', 'pão').");
-    return;
-  }
+    const grams = Number(String(gramsStr).replace(",", "."));
+    if (!isFinite(grams) || grams < 0) return;
 
-  // pergunta gramas
-  const gramsStr = prompt(`Quantos gramas de "${item.label}"?`, "30");
-  if (gramsStr === null) return;
+    const perG = tacoPerGram(item);
+    const kcal = perG.kcal * grams;
 
-  const grams = Number(String(gramsStr).replace(",", ".");
-  if (!isFinite(grams) || grams < 0) return;
-
-  // calcula kcal
-  const perG = tacoPerGram(item);
-  const kcal = perG.kcal * grams;
-
-  // salva no histórico
-  saveMealToHistory({
-    desc: `Belisco: ${text}`,
-    kcalOverride: kcal,
-    photo: null,
-    items: []
-  });
-
-  // limpa campo
-  document.getElementById("snackDesc").value = "";
-
-  // atualiza tela
-  renderHistory();
-  renderDashboard();
-});
-
-
-    const grams = promptGramsFor(key);
-    if (grams === null) return;
-
-    // salva como entrada no dia
-    const f = foodByKey(key);
     saveMealToHistory({
-      desc: `Belisco: ${text}`,
+      desc: `Belisco: ${text} (${grams}g)`,
+      kcalOverride: kcal,
       photo: null,
-      items: [{ foodKey: key, grams }]
+      items: []
     });
 
-    $("snackDesc").value="";
+    if ($("snackDesc")) $("snackDesc").value = "";
     renderHistory();
     renderDashboard();
   });
 
-  $("clearHistory").addEventListener("click", () => {
+  on("clearHistory", "click", () => {
     setHistory([]);
     renderHistory();
     renderDashboard();
   });
 }
 
+/* =========================
+   Init
+========================= */
 async function init(){
+  await loadTaco();
   await loadFoods();
 
   setupNav();
@@ -798,7 +752,6 @@ async function init(){
   renderHistory();
   renderDashboard();
 
-  // Se não tem perfil ainda, começa no cadastro
   const p = getProfile();
   if (!p){
     setActiveScreen("profile");
@@ -808,6 +761,3 @@ async function init(){
 }
 
 init();
-setActiveScreen("home");
-await loadTaco();
-

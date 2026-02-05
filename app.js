@@ -11,6 +11,15 @@ const state = {
   photoDataUrl: null,
   autoTimer: null
 };
+async function loadTaco(){
+  try{
+    const r = await fetch("./data/taco_min.json", { cache: "no-store" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    TACO = await r.json();
+  }catch(e){
+    TACO = [];
+  }
+}
 
 function round1(n){ return Math.round(n*10)/10; }
 function todayKey(d=new Date()){
@@ -729,4 +738,5 @@ async function init(){
 
 init();
 setActiveScreen("home");
+await loadTaco();
 

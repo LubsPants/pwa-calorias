@@ -21,6 +21,40 @@ async function loadTaco(){
   }
 }
 
+function normalize(s){
+  return (s||"")
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/[^a-z0-9\s]/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+}
+
+function tacoSearchOne(query){
+  const q = normalize(query);
+  if (!q || !TACO.length) return null;
+  const parts = q.split(" ").filter(Boolean);
+
+  for (const item of TACO){
+    const name = normalize(item.label);
+    let ok = true;
+    for (const p of parts){
+      if (!name.includes(p)) { ok=false; break; }
+    }
+    if (ok) return item;
+  }
+  return null;
+}
+
+function tacoPerGram(item){
+  return {
+    kcal: (item.kcal_100g||0)/100,
+    p: (item.protein_g_100g||0)/100,
+    c: (item.carb_g_100g||0)/100,
+    g: (item.fat_g_100g||0)/100
+  };
+}
+
 function round1(n){ return Math.round(n*10)/10; }
 function todayKey(d=new Date()){
   const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,"0"), da=String(d.getDate()).padStart(2,"0");

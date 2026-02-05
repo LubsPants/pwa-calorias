@@ -715,15 +715,46 @@ function setupButtons(){
   });
 
   // Beliscos
-  $("snackAdd").addEventListener("click", () => {
-    const text = $("snackDesc").value.trim();
-    if (!text) return;
+document.getElementById("snackAdd").addEventListener("click", () => {
 
-    const key = bestMatchSnack(text);
-    if (!key || approxKcalPerGram(key) === null){
-      alert("Não consegui reconhecer esse belisco ainda. Tente uma palavra mais simples (ex.: 'chocolate', 'pão', 'banana').");
-      return;
-    }
+  const text = document.getElementById("snackDesc").value.trim();
+  if (!text) return;
+
+  // procura na TACO
+  const item = tacoSearchOne(text);
+
+  if (!item){
+    alert("Não encontrei na TACO. Tente algo mais simples (ex.: 'biscoito', 'chocolate', 'pão').");
+    return;
+  }
+
+  // pergunta gramas
+  const gramsStr = prompt(`Quantos gramas de "${item.label}"?`, "30");
+  if (gramsStr === null) return;
+
+  const grams = Number(String(gramsStr).replace(",", "."));
+  if (!isFinite(grams) || grams < 0) return;
+
+  // calcula kcal
+  const perG = tacoPerGram(item);
+  const kcal = perG.kcal * grams;
+
+  // salva no histórico
+  saveMealToHistory({
+    desc: `Belisco: ${text}`,
+    kcalOverride: kcal,
+    photo: null,
+    items: []
+  });
+
+  // limpa campo
+  document.getElementById("snackDesc").value = "";
+
+  // atualiza tela
+  renderHistory();
+  renderDashboard();
+});
+
 
     const grams = promptGramsFor(key);
     if (grams === null) return;

@@ -22,206 +22,68 @@
   </div>
 </header>
 
+<div class="shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sideHeader">
+      <div class="sideTitle">Menu</div>
+      <button id="closeNav" class="iconBtn" type="button" aria-label="Fechar menu">✕</button>
+    </div>
+
+    <nav class="sideNav" aria-label="Navegação">
+      <button class="navItem active" data-screen="home" type="button">Início</button>
+      <button class="navItem" data-screen="register" type="button">Registrar</button>
+      <button class="navItem" data-screen="history" type="button">Histórico</button>
+      <button class="navItem" data-screen="profile" type="button">Perfil</button>
+      <button class="navItem" data-screen="settings" type="button">Ajustes</button>
+    </nav>
+  </aside>
+
   <main class="app">
-    <!-- ======= SCREEN: PROFILE / ONBOARDING ======= -->
-    <section class="screen" id="screen-profile">
-      <section class="card">
-        <h2>Seu cadastro</h2>
-        <p class="hint">Isso serve para sugerir sua meta diária de kcal. Você pode ajustar depois em Ajustes.</p>
-
-        <div class="grid2">
-          <div>
-            <label class="lab">Nome</label>
-            <input id="pfName" type="text" placeholder="Ex.: Lu" />
-          </div>
-          <div>
-            <label class="lab">Idade</label>
-            <input id="pfAge" type="number" min="0" step="1" placeholder="Ex.: 28" />
-          </div>
-
-          <div>
-            <label class="lab">Sexo</label>
-            <select id="pfSex">
-              <option value="female">Feminino</option>
-              <option value="male">Masculino</option>
-              <option value="other">Outro</option>
-            </select>
-          </div>
-          <div>
-            <label class="lab">Altura (cm)</label>
-            <input id="pfHeight" type="number" min="0" step="1" placeholder="Ex.: 165" />
-          </div>
-
-          <div>
-            <label class="lab">Peso (kg)</label>
-            <input id="pfWeight" type="number" min="0" step="0.1" placeholder="Ex.: 62.5" />
-          </div>
-          <div>
-            <label class="lab">Massa muscular (kg) (opcional)</label>
-            <input id="pfLean" type="number" min="0" step="0.1" placeholder="Ex.: 24.0" />
-          </div>
-
-          <div>
-            <label class="lab">Gordura corporal (%) (opcional)</label>
-            <input id="pfBf" type="number" min="0" max="80" step="0.1" placeholder="Ex.: 28" />
-          </div>
-          <div>
-            <label class="lab">Rotina de atividade</label>
-            <select id="pfActivity">
-              <option value="sedentary">Sedentária</option>
-              <option value="light">Leve (1–2x/sem)</option>
-              <option value="moderate">Moderada (3–5x/sem)</option>
-              <option value="high">Alta (6–7x/sem)</option>
-              <option value="athlete">Muito alta (treino pesado)</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="sep"></div>
-
-        <h2>Objetivo</h2>
-        <div class="grid2">
-          <div>
-            <label class="lab">Objetivo</label>
-            <select id="pfGoal">
-              <option value="lose">Perder gordura</option>
-              <option value="maintain">Manter</option>
-              <option value="gain">Ganhar massa</option>
-            </select>
-          </div>
-          <div>
-            <label class="lab">Horizonte</label>
-            <select id="pfHorizon">
-              <option value="weekly">Semanal</option>
-              <option value="monthly">Mensal</option>
-              <option value="quarterly">Trimestral</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="row">
-          <button id="pfSave" type="button">Salvar e sugerir meta kcal</button>
-          <button id="pfSkip" class="ghost" type="button">Pular</button>
-        </div>
-
-        <div class="cardSoft" id="pfSuggestion" style="display:none;"></div>
-      </section>
-    </section>
-
-    <!-- ======= TAB: HOME / DASHBOARD ======= -->
+    <!-- ======= HOME ======= -->
     <section class="screen" id="screen-home">
-      <div class="card hero">
-        <div class="heroRow">
-          <div>
-            <div class="heroKcal" id="dashConsumed">0</div>
-            <div class="muted">kcal consumidas hoje</div>
-          </div>
-          <div class="pill">
-            <div class="pillLabel">Meta</div>
-            <div class="pillValue"><span id="dashTarget">0</span> kcal</div>
-          </div>
-        </div>
-
-        <div class="progressWrap" aria-label="Progresso diário">
-          <div class="progressBar">
-            <div class="progressFill" id="dashFill" style="width:0%"></div>
-          </div>
-          <div class="progressMeta">
-            <span class="muted">Faltam <strong id="dashRemaining">0</strong> kcal</span>
-            <span class="muted"><strong id="dashPct">0</strong>%</span>
-          </div>
-        </div>
-
-        <div class="heroActions">
-          <button id="goRegister" type="button">Registrar refeição</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>Beliscos</h2>
-        <div class="row">
-          <input id="snackDesc" type="text" placeholder='Ex.: biscoito wafer' />
-          <button id="snackAdd" type="button">Adicionar</button>
-        </div>
-        <p class="hint">Eu vou perguntar só os gramas (quando precisar) e somar no seu dia.</p>
-      </div>
+      <!-- (mantém seu conteúdo de home como está) -->
     </section>
 
-    <!-- ======= TAB: REGISTER ======= -->
+    <!-- ======= REGISTER ======= -->
     <section class="screen" id="screen-register">
+      <!-- FOTO COLAPSADA (novo) -->
       <section class="card">
-        <h2>1) Foto (opcional)</h2>
-        <input id="photo" type="file" accept="image/*" capture="environment" />
-        <div class="previewWrap">
-          <img id="preview" alt="Prévia da foto" />
-          <button id="clearPhoto" class="ghost" type="button">Remover foto</button>
-        </div>
-      </section>
-
-      <section class="card">
-        <h2>2) Descrição</h2>
-        <textarea id="desc" rows="3" placeholder="Ex.: PF com arroz, feijão, frango e salada."></textarea>
         <div class="row">
-          <button id="reset" class="ghost" type="button">Limpar</button>
-          <button id="suggest" type="button">Recalcular</button>
+          <button id="togglePhoto" class="ghost" type="button">Adicionar foto (opcional)</button>
         </div>
-        <p class="hint">Ao digitar, eu já vou sugerir e pedir apenas os gramas.</p>
-      </section>
 
-      <section class="card" id="portionBox"></section>
-
-      <section class="card">
-        <h2>3) Itens e gramas</h2>
-        <div id="items"></div>
-        <button id="addItem" class="ghost" type="button">+ Adicionar item</button>
-      </section>
-
-      <section class="card">
-        <h2>Resultado</h2>
-        <div class="result">
-          <div>
-            <div class="big" id="totalKcal">0 kcal</div>
-            <div class="muted" id="totalMacros">P 0g • C 0g • G 0g</div>
+        <div id="photoWrap" style="display:none; margin-top:12px;">
+          <input id="photo" type="file" accept="image/*" capture="environment" />
+          <div class="previewWrap">
+            <img id="preview" alt="Prévia da foto" />
+            <button id="clearPhoto" class="ghost" type="button">Remover foto</button>
           </div>
-          <button id="save" type="button">Salvar refeição</button>
         </div>
       </section>
+
+      <!-- (mantém as seções de descrição/itens/resultado como já estavam) -->
     </section>
 
-    <!-- ======= TAB: HISTORY ======= -->
+    <!-- ======= HISTORY ======= -->
     <section class="screen" id="screen-history">
-      <section class="card">
-        <h2>Histórico</h2>
-        <div id="history"></div>
-        <button id="clearHistory" class="ghost" type="button">Limpar histórico</button>
-      </section>
+      <!-- (mantém como está) -->
     </section>
 
-    <!-- ======= TAB: SETTINGS ======= -->
-    <section class="screen" id="screen-settings">
-      <section class="card">
-        <h2>Meta diária</h2>
-        <div class="row">
-          <input id="targetKcal" type="number" min="0" step="50" placeholder="Ex.: 1800" />
-          <button id="saveTarget" type="button">Salvar</button>
-        </div>
-        <p class="hint">A meta pode ser sugerida pelo seu cadastro, mas você sempre pode ajustar manualmente.</p>
-      </section>
+    <!-- ======= PROFILE (novo: era cadastro) ======= -->
+    <section class="screen" id="screen-profile">
+      <!-- Cole aqui o conteúdo do seu cadastro (nome/idade/sexo/peso/altura etc.) -->
+      <!-- Pode ser exatamente o mesmo bloco que você já tinha no "cadastro" -->
+    </section>
 
-      <section class="card">
-        <h2>Seu perfil</h2>
-        <button id="editProfile" class="ghost" type="button">Editar cadastro</button>
-      </section>
+    <!-- ======= SETTINGS ======= -->
+    <section class="screen" id="screen-settings">
+      <!-- (mantém como está) -->
     </section>
   </main>
 
-  <!-- Bottom Nav -->
-  <nav class="bottomNav" aria-label="Navegação">
-    <button class="navBtn active" data-screen="home" type="button">Início</button>
-    <button class="navBtn" data-screen="register" type="button">Registrar</button>
-    <button class="navBtn" data-screen="history" type="button">Histórico</button>
-    <button class="navBtn" data-screen="settings" type="button">Ajustes</button>
-  </nav>
+  <!-- overlay pra fechar menu no mobile -->
+  <div class="backdrop" id="backdrop" style="display:none;"></div>
+</div>
 
   <script src="app.js"></script>
   <script>

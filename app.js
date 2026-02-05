@@ -263,6 +263,17 @@ async function compressImage(file, maxW=1280, quality=0.75){
 }
 
 function setupPhoto(){
+  function setupPhotoToggle(){
+  const btn = document.getElementById("togglePhoto");
+  const wrap = document.getElementById("photoWrap");
+  if (!btn || !wrap) return;
+
+  btn.addEventListener("click", () => {
+    const open = wrap.style.display === "block";
+    wrap.style.display = open ? "none" : "block";
+    btn.textContent = open ? "Adicionar foto (opcional)" : "Esconder foto";
+  });
+}
   const input=$("photo");
   const preview=$("preview");
 
@@ -716,3 +727,5 @@ async function init(){
 }
 
 init();
+setActiveScreen("home");
+

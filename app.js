@@ -1,3 +1,4 @@
+let TACO = [];
 let FOODS = [];
 const $ = (id) => document.getElementById(id);
 

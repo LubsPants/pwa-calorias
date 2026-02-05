@@ -1,290 +1,235 @@
-/* ===============================
-   🌸 Spring Peach Theme (Lu)
-   Font: Poppins
-   =============================== */
+:root{
+  --peach-1:#FAB4BF;
+  --peach-2:#FFD2C7;
+  --peach-3:#FFF1DD;
+  --peach-4:#FFE2E8;
+  --peach-5:#F8FFB5;
 
-:root {
-  --peach-1: #FAB4BF;
-  --peach-2: #FFD2C7;
-  --peach-3: #FFF1DD;
-  --peach-4: #FFE2E8;
-  --peach-5: #F8FFB5;
+  --text:#3a2f2f;
+  --muted:#7a6666;
+  --card:#ffffff;
 
-  --text: #3a2f2f;
-  --muted: #7a6666;
-  --white: #ffffff;
-
-  --radius: 18px;
-  --shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  --radius:18px;
+  --shadow:0 10px 26px rgba(0,0,0,.08);
 }
 
-* {
-  box-sizing: border-box;
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family:"Poppins",system-ui,-apple-system,Segoe UI,Roboto,Arial;
+  background:var(--peach-3);
+  color:var(--text);
 }
 
-body {
-  margin: 0;
-  font-family: "Poppins", sans-serif;
-  background: var(--peach-3);
-  color: var(--text);
+.topbar{
+  position:sticky; top:0; z-index:20;
+  background:var(--peach-4);
+  border-bottom:1px solid rgba(0,0,0,.06);
+  padding:14px 16px;
+}
+.topbarTitle{font-weight:700; font-size:18px;}
+.topbarSubtitle{font-size:12px; color:var(--muted); margin-top:2px;}
+
+.app{
+  max-width:900px;
+  margin:0 auto;
+  padding:14px 14px 92px; /* espaço para bottom nav */
+  display:block;
 }
 
-/* ===============================
-   Header
-   =============================== */
+.screen{display:none; gap:14px;}
+.screen.active{display:grid; gap:14px;}
 
-.header {
-  text-align: center;
-  padding: 28px 16px;
-  background: var(--peach-4);
-  border-bottom: 2px solid var(--peach-2);
+.card{
+  background:var(--card);
+  border-radius:var(--radius);
+  padding:16px;
+  box-shadow:var(--shadow);
+  border:1px solid rgba(0,0,0,.05);
 }
 
-.header h1 {
-  margin: 0;
-  font-size: 26px;
-  font-weight: 700;
-  color: var(--text);
+h2{
+  margin:0 0 12px;
+  font-size:16px;
+  font-weight:600;
+}
+.hint{margin:10px 0 0; color:var(--muted); font-size:12px;}
+.muted{color:var(--muted); font-size:12px;}
+.big{font-size:30px; font-weight:800;}
+
+textarea,input,select{
+  width:100%;
+  padding:12px;
+  border-radius:14px;
+  border:1px solid rgba(0,0,0,.12);
+  background:var(--peach-4);
+  font:inherit;
+  outline:none;
+}
+textarea:focus,input:focus,select:focus{
+  border-color:var(--peach-1);
+  box-shadow:0 0 0 3px rgba(250,180,191,.45);
 }
 
-.header p {
-  margin-top: 6px;
-  font-size: 14px;
-  color: var(--muted);
+.row{display:flex; gap:10px; margin-top:10px;}
+.row > *{flex:1}
+
+button{
+  border:0;
+  cursor:pointer;
+  border-radius:14px;
+  padding:12px 14px;
+  font:inherit;
+  font-weight:600;
+  transition:transform .12s, filter .12s;
+  background:var(--peach-1);
+  color:white;
+  box-shadow:0 8px 18px rgba(250,180,191,.35);
+}
+button:active{transform:scale(.98)}
+button:hover{filter:brightness(.98)}
+
+button.ghost{
+  background:transparent;
+  color:var(--text);
+  border:1px solid rgba(0,0,0,.14);
+  box-shadow:none;
+}
+button.del{
+  background:#ff6b6b;
+  box-shadow:none;
 }
 
-/* ===============================
-   Layout Container
-   =============================== */
-
-.container {
-  max-width: 850px;
-  margin: 0 auto;
-  padding: 18px;
-  display: grid;
-  gap: 16px;
+.previewWrap{margin-top:10px; display:grid; gap:8px;}
+#preview{
+  width:100%;
+  max-height:240px;
+  object-fit:cover;
+  border-radius:16px;
+  display:none;
 }
 
-/* ===============================
-   Cards
-   =============================== */
-
-.card {
-  background: var(--white);
-  border-radius: var(--radius);
-  padding: 18px;
-  box-shadow: var(--shadow);
-  border: 1px solid rgba(0, 0, 0, 0.05);
+.itemRow{
+  display:grid;
+  grid-template-columns:1.4fr .7fr .7fr .2fr;
+  gap:10px;
+  margin-bottom:10px;
 }
 
-.card h2 {
-  margin: 0 0 12px;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text);
+.result{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
 }
 
-.card h3 {
-  margin-top: 16px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--muted);
+#portionBox:empty{display:none;}
+.portionGrid{display:grid; gap:12px;}
+.portionCard{
+  background:var(--peach-4);
+  border-radius:16px;
+  padding:14px;
+  border:1px solid rgba(0,0,0,.06);
+}
+.portionTitle{font-weight:700; margin-bottom:8px;}
+.portionBtns{display:flex; flex-wrap:wrap; gap:8px;}
+.chip{
+  background:var(--card);
+  color:var(--text);
+  border:1px solid rgba(0,0,0,.12);
+  border-radius:999px;
+  padding:8px 12px;
+  font-size:13px;
+  box-shadow:none;
+}
+.chip:hover{background:var(--peach-2);}
+
+.histCard{
+  background:var(--peach-4);
+  border-radius:16px;
+  padding:14px;
+  margin-bottom:10px;
+  border:1px solid rgba(0,0,0,.06);
+}
+.histImg{
+  width:100%;
+  max-height:160px;
+  object-fit:cover;
+  border-radius:14px;
+  margin-top:10px;
 }
 
-/* ===============================
-   Inputs
-   =============================== */
-
-textarea,
-input,
-select {
-  width: 100%;
-  padding: 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  background: var(--peach-4);
-  font-family: inherit;
-  font-size: 14px;
-  outline: none;
+/* ===== Dashboard ===== */
+.hero{
+  background:linear-gradient(180deg, var(--peach-4), var(--card));
+  border:1px solid rgba(0,0,0,.06);
 }
-
-textarea:focus,
-input:focus,
-select:focus {
-  border-color: var(--peach-1);
-  box-shadow: 0 0 0 3px rgba(250, 180, 191, 0.4);
+.heroRow{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:flex-start;
 }
-
-/* ===============================
-   Buttons
-   =============================== */
-
-button {
-  border: none;
-  cursor: pointer;
-  border-radius: 14px;
-  padding: 12px 14px;
-  font-family: inherit;
-  font-weight: 600;
-  transition: 0.15s;
+.heroKcal{font-size:44px; font-weight:800; line-height:1;}
+.pill{
+  background:var(--peach-5);
+  border:1px solid rgba(0,0,0,.08);
+  border-radius:16px;
+  padding:10px 12px;
+  min-width:120px;
+  text-align:right;
 }
-
-button:active {
-  transform: scale(0.97);
+.pillLabel{font-size:12px; color:var(--muted);}
+.pillValue{font-weight:800;}
+.progressWrap{margin-top:14px;}
+.progressBar{
+  width:100%;
+  height:12px;
+  background:rgba(0,0,0,.08);
+  border-radius:999px;
+  overflow:hidden;
 }
-
-button:not(.ghost):not(.del) {
-  background: var(--peach-1);
-  color: white;
-  box-shadow: 0 4px 10px rgba(250, 180, 191, 0.35);
+.progressFill{
+  height:100%;
+  width:0%;
+  background:var(--peach-1);
+  border-radius:999px;
 }
-
-button:hover:not(.ghost):not(.del) {
-  background: #f79aa8;
+.progressMeta{
+  display:flex;
+  justify-content:space-between;
+  margin-top:8px;
 }
+.heroActions{display:flex; gap:10px; margin-top:14px;}
+.heroActions button{flex:1}
 
-button.ghost {
-  background: transparent;
-  border: 1px solid var(--peach-1);
-  color: var(--text);
+.list{margin:0; padding-left:18px;}
+.list li{margin:8px 0}
+
+/* ===== Bottom Nav ===== */
+.bottomNav{
+  position:fixed;
+  left:0; right:0; bottom:0;
+  background:var(--card);
+  border-top:1px solid rgba(0,0,0,.08);
+  display:flex;
+  gap:8px;
+  padding:10px;
+  z-index:30;
 }
-
-button.ghost:hover {
-  background: var(--peach-4);
+.navBtn{
+  flex:1;
+  background:transparent;
+  color:var(--muted);
+  border:1px solid rgba(0,0,0,.10);
+  box-shadow:none;
+  padding:12px 10px;
+  border-radius:16px;
+  font-weight:700;
 }
-
-/* Delete button */
-button.del {
-  background: #ff6b6b;
-  color: white;
-  border-radius: 12px;
-}
-
-/* ===============================
-   Rows
-   =============================== */
-
-.row {
-  display: flex;
-  gap: 10px;
-  margin-top: 12px;
-}
-
-/* ===============================
-   Preview Image
-   =============================== */
-
-#preview {
-  width: 100%;
-  max-height: 230px;
-  object-fit: cover;
-  border-radius: 16px;
-  margin-top: 10px;
-  display: none;
-}
-
-/* ===============================
-   Items Grid
-   =============================== */
-
-.itemRow {
-  display: grid;
-  grid-template-columns: 1.4fr 0.7fr 0.7fr 0.2fr;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-/* ===============================
-   Quick Portions Chips
-   =============================== */
-
-#portionBox:empty {
-  display: none;
-}
-
-.portionGrid {
-  display: grid;
-  gap: 12px;
-}
-
-.portionCard {
-  background: var(--peach-4);
-  border-radius: 16px;
-  padding: 14px;
-}
-
-.portionTitle {
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-
-.portionBtns {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.chip {
-  padding: 8px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--peach-1);
-  background: white;
-  color: var(--text);
-  font-size: 13px;
-}
-
-.chip:hover {
-  background: var(--peach-2);
-}
-
-/* ===============================
-   Result Box
-   =============================== */
-
-.result {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-.big {
-  font-size: 30px;
-  font-weight: 700;
-  color: var(--text);
-}
-
-.muted {
-  color: var(--muted);
-  font-size: 13px;
-}
-
-/* ===============================
-   History
-   =============================== */
-
-.histCard {
-  background: var(--peach-4);
-  border-radius: 16px;
-  padding: 14px;
-  margin-bottom: 10px;
-}
-
-.histImg {
-  width: 100%;
-  max-height: 160px;
-  object-fit: cover;
-  border-radius: 14px;
-  margin-top: 10px;
-}
-
-/* ===============================
-   Footer
-   =============================== */
-
-.footer {
-  text-align: center;
-  padding: 18px;
-  font-size: 13px;
-  color: var(--muted);
+.navBtn.active{
+  background:var(--peach-1);
+  color:white;
+  border-color:transparent;
 }

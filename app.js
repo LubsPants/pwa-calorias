@@ -3,137 +3,341 @@ const $ = (id) => document.getElementById(id);
 
 const STORAGE_TARGET = "dailyTargetKcal";
 const STORAGE_HISTORY = "mealHistory";
+const STORAGE_PROFILE = "userProfileV1";
 
 const state = {
   items: [],
-  photoDataUrl: null
+  photoDataUrl: null,
+  autoTimer: null
 };
 
 function round1(n){ return Math.round(n*10)/10; }
-function todayKey(d = new Date()){
-  const y = d.getFullYear();
-  const m = String(d.getMonth()+1).padStart(2,"0");
-  const da = String(d.getDate()).padStart(2,"0");
+function todayKey(d=new Date()){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,"0"), da=String(d.getDate()).padStart(2,"0");
   return `${y}-${m}-${da}`;
 }
 
 async function loadFoods(){
   FOODS = await (await fetch("./foods.json")).json();
 }
-
 function foodByKey(key){ return FOODS.find(f => f.key === key); }
 
+/* --- Equivalências para permitir "perguntar só gramas" --- */
+/* Se um item não é "por grama", a gente converte com uma aproximação. */
+const GRAM_EQUIV = {
+  unidade: {
+    banana: 118, maca: 182, ovo: 50, pao_frances: 50
+  },
+  colher_sopa: {
+    arroz: 25, arroz_integral: 25
+  },
+  concha: {
+    feijao: 100, feijao_preto: 100
+  },
+  tigela: { salada: 150 },
+  colher_cha: { azeite: 5, acucar: 4 },
+  pote: { iogurte: 170 },
+  xicara: { cafe_sem_acucar: 50 }
+};
+
+function approxKcalPerGram(foodKey){
+  const f = foodByKey(foodKey);
+  if (!f) return null;
+
+  if (f.unit === "gramas") return f.kcal; // já é por grama
+
+  const eq = GRAM_EQUIV[f.unit]?.[foodKey];
+  if (!eq) return null;
+
+  // f.kcal é por unidade/colher/concha/etc. Converte para por grama.
+  return f.kcal / eq;
+}
+
 function prettyUnit(u){
-  const map = {
-    colher_sopa:"colher (sopa)",
-    colher_cha:"colher (chá)",
-    concha:"concha",
-    gramas:"gramas",
-    unidade:"unidade",
-    tigela:"tigela",
-    pote:"pote",
-    xicara:"xícara"
-  };
+  const map = { gramas:"g" };
   return map[u] || u;
 }
 
-/* ---------------- Tabs (Bottom Nav) ---------------- */
+/* ---------------- Tabs ---------------- */
 function setActiveScreen(name){
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
   document.querySelectorAll(".navBtn").forEach(b => b.classList.remove("active"));
 
   const screen = document.getElementById(`screen-${name}`);
   if (screen) screen.classList.add("active");
+
   const btn = document.querySelector(`.navBtn[data-screen="${name}"]`);
   if (btn) btn.classList.add("active");
 }
-
 function setupNav(){
   document.querySelectorAll(".navBtn").forEach(btn => {
     btn.addEventListener("click", () => setActiveScreen(btn.dataset.screen));
   });
   $("goRegister").addEventListener("click", () => setActiveScreen("register"));
+  $("editProfile").addEventListener("click", () => setActiveScreen("profile"));
 }
 
 /* ---------------- Meta diária ---------------- */
 function getDailyTarget(){
   const v = Number(localStorage.getItem(STORAGE_TARGET) || 0);
-  return v > 0 ? v : 1800; // default amigável
+  return v > 0 ? v : 1800;
 }
 function setDailyTarget(v){
   localStorage.setItem(STORAGE_TARGET, String(v));
 }
 
-/* ---------------- Itens & cálculo da refeição ---------------- */
-function addItem(foodKey, qty, unitOverride=null){
-  const food = foodByKey(foodKey) || FOODS[0];
-  state.items.push({ foodKey: food.key, qty, unit: unitOverride || food.unit });
+/* ---------------- Perfil + sugestão de meta ---------------- */
+function getProfile(){
+  try { return JSON.parse(localStorage.getItem(STORAGE_PROFILE) || "null"); }
+  catch { return null; }
+}
+function setProfile(p){
+  localStorage.setItem(STORAGE_PROFILE, JSON.stringify(p));
+}
+
+function activityFactor(code){
+  const map = {
+    sedentary: 1.2,
+    light: 1.375,
+    moderate: 1.55,
+    high: 1.725,
+    athlete: 1.9
+  };
+  return map[code] || 1.2;
+}
+
+// Mifflin-St Jeor (aprox). other -> usa female como base.
+function bmrMifflin({sex, weightKg, heightCm, age}){
+  const s = (sex === "male") ? 5 : -161;
+  return 10*weightKg + 6.25*heightCm - 5*age + s;
+}
+
+// Ajuste de objetivo por horizonte (bem conservador)
+function goalAdjustmentKcal(goal, horizon){
+  // negative para perder, positive para ganhar
+  const base = {
+    weekly:  { lose: -400, maintain: 0, gain: +250 },
+    monthly: { lose: -300, maintain: 0, gain: +200 },
+    quarterly:{ lose: -200, maintain: 0, gain: +150 }
+  };
+  return (base[horizon] && base[horizon][goal]) ?? 0;
+}
+
+function suggestTargetFromProfile(p){
+  const bmr = bmrMifflin({
+    sex: p.sex,
+    weightKg: p.weightKg,
+    heightCm: p.heightCm,
+    age: p.age
+  });
+  const tdee = bmr * activityFactor(p.activity);
+  const adj = goalAdjustmentKcal(p.goal, p.horizon);
+  const suggested = Math.round(tdee + adj);
+
+  return {
+    bmr: Math.round(bmr),
+    tdee: Math.round(tdee),
+    suggested
+  };
+}
+
+function setupProfile(){
+  $("pfSave").addEventListener("click", () => {
+    const p = {
+      name: $("pfName").value.trim(),
+      age: Number($("pfAge").value || 0),
+      sex: $("pfSex").value,
+      weightKg: Number($("pfWeight").value || 0),
+      heightCm: Number($("pfHeight").value || 0),
+      leanKg: Number($("pfLean").value || 0),
+      bfPct: Number($("pfBf").value || 0),
+      activity: $("pfActivity").value,
+      goal: $("pfGoal").value,
+      horizon: $("pfHorizon").value
+    };
+
+    // validação mínima
+    if (!p.age || !p.weightKg || !p.heightCm){
+      const box = $("pfSuggestion");
+      box.style.display = "block";
+      box.innerHTML = `<strong>Faltou preencher idade, peso e altura.</strong><div class="muted">Sem isso eu não consigo sugerir kcal com segurança.</div>`;
+      return;
+    }
+
+    setProfile(p);
+
+    const s = suggestTargetFromProfile(p);
+    const box = $("pfSuggestion");
+    box.style.display = "block";
+    box.innerHTML = `
+      <div><strong>Sugestão de meta diária:</strong> ${s.suggested} kcal</div>
+      <div class="muted">Estimativa: BMR ${s.bmr} • gasto diário (TDEE) ${s.tdee} • ajuste objetivo ${s.suggested - s.tdee} kcal</div>
+      <div class="muted">Você pode ajustar a meta em Ajustes quando quiser.</div>
+    `;
+
+    // aplica a sugestão, mas mantém editável depois
+    setDailyTarget(s.suggested);
+    $("targetKcal").value = s.suggested;
+
+    renderDashboard();
+    setActiveScreen("home");
+  });
+
+  $("pfSkip").addEventListener("click", () => {
+    // não salva, só segue
+    setActiveScreen("home");
+  });
+
+  // Se já existe perfil, preenche campos
+  const p = getProfile();
+  if (p){
+    $("pfName").value = p.name || "";
+    $("pfAge").value = p.age || "";
+    $("pfSex").value = p.sex || "female";
+    $("pfWeight").value = p.weightKg || "";
+    $("pfHeight").value = p.heightCm || "";
+    $("pfLean").value = p.leanKg || "";
+    $("pfBf").value = p.bfPct || "";
+    $("pfActivity").value = p.activity || "sedentary";
+    $("pfGoal").value = p.goal || "maintain";
+    $("pfHorizon").value = p.horizon || "monthly";
+  }
+}
+
+/* ---------------- Foto opcional com compressão ---------------- */
+async function compressImage(file, maxW=1280, quality=0.75){
+  const dataUrl = await new Promise((res) => {
+    const r=new FileReader();
+    r.onload=()=>res(r.result);
+    r.readAsDataURL(file);
+  });
+
+  const img=new Image();
+  img.src=dataUrl;
+  await new Promise((res)=>img.onload=res);
+
+  const scale=Math.min(1, maxW/img.width);
+  const w=Math.round(img.width*scale);
+  const h=Math.round(img.height*scale);
+
+  const canvas=document.createElement("canvas");
+  canvas.width=w; canvas.height=h;
+  canvas.getContext("2d").drawImage(img,0,0,w,h);
+
+  return canvas.toDataURL("image/jpeg", quality);
+}
+
+function setupPhoto(){
+  const input=$("photo");
+  const preview=$("preview");
+
+  input.addEventListener("change", async () => {
+    const file=input.files?.[0];
+    if (!file) return;
+
+    state.photoDataUrl = await compressImage(file, 1280, 0.75);
+    preview.src = state.photoDataUrl;
+    preview.style.display="block";
+
+    // se já tem descrição, recalcula
+    scheduleAutoCalc();
+  });
+
+  $("clearPhoto").addEventListener("click", () => {
+    state.photoDataUrl=null;
+    preview.src="";
+    preview.style.display="none";
+    input.value="";
+  });
+}
+
+/* ---------------- Itens (agora focado em gramas) ---------------- */
+function addItem(foodKey, grams){
+  state.items.push({ foodKey, grams: Number(grams || 0) });
   renderItems();
 }
 
 function computeMealTotals(items){
   let kcal=0, p=0, c=0, g=0;
+
   for (const it of items){
     const f = foodByKey(it.foodKey);
     if (!f) continue;
-    const factor = Number(it.qty || 0);
-    kcal += f.kcal * factor;
-    p += f.p * factor;
-    c += f.c * factor;
-    g += f.g * factor;
+
+    const perGram = approxKcalPerGram(it.foodKey);
+    if (!perGram) continue;
+
+    const factor = Number(it.grams || 0);
+    kcal += perGram * factor;
+
+    // macros: também converter para por grama
+    // se f.unit != gramas, converte pelos equivalentes
+    let ppg = f.p, cpg = f.c, gpg = f.g;
+    if (f.unit !== "gramas"){
+      const eq = GRAM_EQUIV[f.unit]?.[it.foodKey];
+      if (eq){
+        ppg = f.p / eq;
+        cpg = f.c / eq;
+        gpg = f.g / eq;
+      } else {
+        // sem equivalente, ignora macros
+        ppg = 0; cpg = 0; gpg = 0;
+      }
+    }
+
+    p += ppg * factor;
+    c += cpg * factor;
+    g += gpg * factor;
   }
+
   return {kcal, p, c, g};
 }
 
-function computeTotalsUI(){
+function renderTotalsUI(){
   const t = computeMealTotals(state.items);
   $("totalKcal").textContent = `${Math.round(t.kcal)} kcal`;
   $("totalMacros").textContent = `P ${round1(t.p)}g • C ${round1(t.c)}g • G ${round1(t.g)}g`;
 }
 
 function renderItems(){
-  const wrap = $("items");
-  wrap.innerHTML = "";
+  const wrap=$("items");
+  wrap.innerHTML="";
 
-  if (state.items.length === 0){
-    wrap.innerHTML = `<p class="muted">Nenhum item ainda. Use “Sugerir itens” ou adicione manualmente.</p>`;
-    computeTotalsUI();
+  if (!state.items.length){
+    wrap.innerHTML = `<p class="muted">Digite a descrição e eu vou montar os itens. Você também pode adicionar manualmente.</p>`;
+    renderTotalsUI();
     return;
   }
 
   state.items.forEach((it, idx) => {
-    const food = foodByKey(it.foodKey);
+    const f = foodByKey(it.foodKey);
 
-    const row = document.createElement("div");
-    row.className = "itemRow";
-    row.innerHTML = `
+    const row=document.createElement("div");
+    row.className="itemRow";
+    row.innerHTML=`
       <select aria-label="Alimento">
-        ${FOODS.map(f => `<option value="${f.key}" ${f.key===it.foodKey?"selected":""}>${f.label}</option>`).join("")}
+        ${FOODS.map(x=>`<option value="${x.key}" ${x.key===it.foodKey?"selected":""}>${x.label}</option>`).join("")}
       </select>
-      <input aria-label="Quantidade" type="number" min="0" step="0.5" value="${it.qty}" />
-      <select aria-label="Unidade">
-        <option value="${food.unit}" selected>${prettyUnit(food.unit)}</option>
-      </select>
-      <button class="del" title="Remover" type="button">✕</button>
+      <input aria-label="Gramas" type="number" min="0" step="1" value="${it.grams}" />
+      <select aria-label="Unidade"><option selected>g</option></select>
+      <button class="del" type="button" title="Remover">✕</button>
     `;
 
-    const [foodSel, qtyInp, unitSel, delBtn] = row.children;
+    const [foodSel, gramsInp, unitSel, delBtn] = row.children;
 
-    foodSel.addEventListener("change", (e) => {
+    foodSel.addEventListener("change", (e)=>{
       it.foodKey = e.target.value;
-      const nf = foodByKey(it.foodKey);
-      it.unit = nf.unit;
       renderItems();
     });
 
-    qtyInp.addEventListener("input", (e) => {
-      it.qty = Number(e.target.value || 0);
-      computeTotalsUI();
+    gramsInp.addEventListener("input",(e)=>{
+      it.grams = Number(e.target.value || 0);
+      renderTotalsUI();
     });
 
-    unitSel.addEventListener("change", () => computeTotalsUI());
+    unitSel.addEventListener("change", ()=>renderTotalsUI());
 
-    delBtn.addEventListener("click", () => {
+    delBtn.addEventListener("click",()=>{
       state.items.splice(idx,1);
       renderItems();
     });
@@ -141,10 +345,10 @@ function renderItems(){
     wrap.appendChild(row);
   });
 
-  computeTotalsUI();
+  renderTotalsUI();
 }
 
-/* ---------------- Sugestão por texto + porções rápidas ---------------- */
+/* ---------------- Detecção por texto + perguntar só gramas ---------------- */
 const KEYWORDS = [
   { key:"arroz", hits:["arroz"] },
   { key:"arroz_integral", hits:["arroz integral"] },
@@ -167,233 +371,152 @@ const KEYWORDS = [
   { key:"chocolate", hits:["chocolate"] }
 ];
 
-const DEFAULTS = {
-  arroz:{qty:4}, arroz_integral:{qty:4},
-  feijao:{qty:1}, feijao_preto:{qty:1},
-  frango:{qty:120}, carne_bovina:{qty:120}, peixe:{qty:140},
-  ovo:{qty:1}, salada:{qty:1},
-  batata_frita:{qty:100}, azeite:{qty:1},
-  pao_frances:{qty:1}, tapioca:{qty:80},
-  banana:{qty:1}, maca:{qty:1},
-  iogurte:{qty:1}, cafe_sem_acucar:{qty:1}, acucar:{qty:1},
-  chocolate:{qty:20}
+// sugestão inicial de gramas
+const DEFAULT_GRAMS = {
+  arroz: 100,
+  arroz_integral: 100,
+  feijao: 100,
+  feijao_preto: 100,
+  frango: 120,
+  carne_bovina: 120,
+  peixe: 140,
+  ovo: 50,
+  salada: 150,
+  batata_frita: 100,
+  azeite: 5,
+  pao_frances: 50,
+  tapioca: 80,
+  banana: 118,
+  maca: 182,
+  iogurte: 170,
+  cafe_sem_acucar: 50,
+  acucar: 4,
+  chocolate: 20
 };
 
-function quickOptionsFor(foodKey){
-  const f = foodByKey(foodKey);
-  if (!f) return [];
-  if (f.unit === "colher_sopa") return [2,4,6,8];
-  if (f.unit === "concha") return [0.5,1,1.5,2];
-  if (f.unit === "gramas") return [80,120,160,200];
-  if (f.unit === "unidade") return [1,2,3];
-  if (f.unit === "colher_cha") return [0.5,1,2];
-  return [1,2];
-}
-
-function renderQuickPortions(keysAdded){
-  const box = $("portionBox");
-  if (!box) return;
-
-  if (!keysAdded || keysAdded.length===0){
-    box.innerHTML = "";
-    return;
-  }
-
-  box.innerHTML = `
-    <h2>Ajuste rápido de porções</h2>
-    <div class="portionGrid"></div>
-    <p class="muted">Clique para ajustar. Você também pode editar manualmente nos itens.</p>
-  `;
-
-  const grid = box.querySelector(".portionGrid");
-
-  keysAdded.forEach((key) => {
-    const it = state.items.find(x => x.foodKey === key);
-    if (!it) return;
-    const f = foodByKey(key);
-    const opts = quickOptionsFor(key);
-
-    const card = document.createElement("div");
-    card.className = "portionCard";
-    card.innerHTML = `
-      <div class="portionTitle">${f.label}</div>
-      <div class="portionBtns">
-        ${opts.map(v => `<button type="button" class="chip" data-key="${key}" data-v="${v}">${v} ${prettyUnit(f.unit)}</button>`).join("")}
-      </div>
-    `;
-    grid.appendChild(card);
-  });
-
-  grid.querySelectorAll("button.chip").forEach(btn => {
-    btn.addEventListener("click", (e) => {
-      const key = e.target.getAttribute("data-key");
-      const v = Number(e.target.getAttribute("data-v"));
-      const it = state.items.find(x => x.foodKey === key);
-      if (!it) return;
-      it.qty = v;
-      renderItems();
-    });
-  });
-}
-
-function suggestFromText(text){
-  const t = (text || "").toLowerCase();
-  const found = [];
-
+function detectKeysFromText(text){
+  const t=(text||"").toLowerCase();
+  const found=[];
   for (const k of KEYWORDS){
-    if (k.hits.some(h => t.includes(h))) found.push(k.key);
+    if (k.hits.some(h=>t.includes(h))) found.push(k.key);
+  }
+  // remove duplicados
+  return [...new Set(found)];
+}
+
+function promptGramsFor(key){
+  const f = foodByKey(key);
+  const def = DEFAULT_GRAMS[key] || 100;
+  const v = prompt(`Quantos gramas de "${f?.label || key}"?`, String(def));
+  if (v === null) return null;
+  const n = Number(String(v).replace(",", "."));
+  if (!isFinite(n) || n < 0) return null;
+  return n;
+}
+
+function recalcMealFromDescription(){
+  const desc = $("desc").value.trim();
+  if (!desc) return;
+
+  const keys = detectKeysFromText(desc).filter(k => approxKcalPerGram(k) !== null);
+
+  // mantém itens já existentes se ainda estão no texto
+  const existingMap = new Map(state.items.map(it => [it.foodKey, it.grams]));
+  const next = [];
+
+  for (const key of keys){
+    const grams = existingMap.get(key);
+    next.push({ foodKey: key, grams: grams ?? 0 });
   }
 
-  const added = [];
-  for (const key of found){
-    if (!state.items.some(it => it.foodKey === key)){
-      const def = DEFAULTS[key] || {qty:1};
-      addItem(key, def.qty);
-      added.push(key);
+  state.items = next;
+  renderItems();
+
+  // pedir gramas só para itens novos ou zerados
+  for (const it of state.items){
+    if (!it.grams || it.grams === 0){
+      const grams = promptGramsFor(it.foodKey);
+      if (grams !== null) it.grams = grams;
     }
   }
 
-  if (state.items.length === 0 && FOODS.length) addItem(FOODS[0].key, 1);
-  renderQuickPortions(added);
+  renderItems();
 }
 
-/* ---------------- Foto opcional com compressão ---------------- */
-async function compressImage(file, maxW=1280, quality=0.75){
-  const dataUrl = await new Promise((res) => {
-    const r = new FileReader();
-    r.onload = () => res(r.result);
-    r.readAsDataURL(file);
-  });
-
-  const img = new Image();
-  img.src = dataUrl;
-  await new Promise((res) => (img.onload = res));
-
-  const scale = Math.min(1, maxW / img.width);
-  const w = Math.round(img.width * scale);
-  const h = Math.round(img.height * scale);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = w; canvas.height = h;
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(img, 0, 0, w, h);
-
-  return canvas.toDataURL("image/jpeg", quality);
+function scheduleAutoCalc(){
+  clearTimeout(state.autoTimer);
+  state.autoTimer = setTimeout(() => {
+    recalcMealFromDescription();
+  }, 450);
 }
 
-function setupPhoto(){
-  const input = $("photo");
-  const preview = $("preview");
-
-  input.addEventListener("change", async () => {
-    const file = input.files?.[0];
-    if (!file) return;
-
-    const compressed = await compressImage(file, 1280, 0.75);
-    state.photoDataUrl = compressed;
-
-    preview.src = state.photoDataUrl;
-    preview.style.display = "block";
-  });
-
-  $("clearPhoto").addEventListener("click", () => {
-    state.photoDataUrl = null;
-    preview.src = "";
-    preview.style.display = "none";
-    input.value = "";
-  });
+/* ---------------- Beliscos ---------------- */
+function bestMatchSnack(text){
+  const t=(text||"").toLowerCase();
+  // procura por hits primeiro
+  for (const k of KEYWORDS){
+    if (k.hits.some(h=>t.includes(h))) return k.key;
+  }
+  // fallback: procura label
+  const byLabel = FOODS.find(f => f.label.toLowerCase().includes(t));
+  return byLabel?.key || null;
 }
 
 /* ---------------- Histórico + Dashboard ---------------- */
 function getHistory(){
-  return JSON.parse(localStorage.getItem(STORAGE_HISTORY) || "[]");
+  try { return JSON.parse(localStorage.getItem(STORAGE_HISTORY) || "[]"); }
+  catch { return []; }
 }
 function setHistory(arr){
   localStorage.setItem(STORAGE_HISTORY, JSON.stringify(arr));
 }
 
 function escapeHtml(s){
-  return s.replace(/[&<>"']/g, (c) => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-  }[c]));
+  return (s||"").replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[c]));
 }
 
-function saveMeal(){
-  const mealTotals = computeMealTotals(state.items);
+function saveMealToHistory({desc, photo, items, kcalOverride=null}){
+  const totals = (kcalOverride !== null) ? {kcal: kcalOverride, p:0,c:0,g:0} : computeMealTotals(items);
 
   const entry = {
     ts: new Date().toISOString(),
     day: todayKey(),
-    desc: $("desc").value.trim(),
-    photo: state.photoDataUrl,
-    items: state.items,
-    quickKcal: 0,
-    kcal: mealTotals.kcal
+    desc,
+    photo,
+    items,
+    kcal: totals.kcal
   };
 
   const history = getHistory();
   history.unshift(entry);
-  setHistory(history.slice(0, 60));
+  setHistory(history.slice(0, 80));
+}
 
-  // reset “registrar”
-  $("desc").value = "";
-  state.items = [];
+function saveMeal(){
+  const desc = $("desc").value.trim() || "Refeição";
+  saveMealToHistory({
+    desc,
+    photo: state.photoDataUrl,
+    items: state.items
+  });
+
+  // limpa
+  $("desc").value="";
+  state.items=[];
   renderItems();
-  renderQuickPortions([]);
+  renderPortionBox([]);
 
   renderHistory();
   renderDashboard();
   setActiveScreen("home");
 }
 
-function quickAddKcal(kcal){
-  const entry = {
-    ts: new Date().toISOString(),
-    day: todayKey(),
-    desc: "Adição rápida",
-    photo: null,
-    items: [],
-    quickKcal: kcal,
-    kcal: kcal
-  };
-  const history = getHistory();
-  history.unshift(entry);
-  setHistory(history.slice(0, 60));
-  renderHistory();
-  renderDashboard();
-}
-
-function renderHistory(){
-  const history = getHistory();
-  const wrap = $("history");
-  wrap.innerHTML = "";
-
-  if (!history.length){
-    wrap.innerHTML = `<p class="muted">Nada salvo ainda.</p>`;
-    return;
-  }
-
-  for (const h of history){
-    const dt = new Date(h.ts);
-    const kcal = Math.round(Number(h.kcal || 0));
-    const div = document.createElement("div");
-    div.className = "histCard";
-    div.innerHTML = `
-      <div><strong>${kcal} kcal</strong> <span class="muted">(${dt.toLocaleString()})</span></div>
-      <div class="muted">${escapeHtml(h.desc || "")}</div>
-      ${h.photo ? `<img alt="foto" src="${h.photo}" class="histImg">` : ""}
-    `;
-    wrap.appendChild(div);
-  }
-}
-
 function sumConsumedForDay(dayStr){
-  const history = getHistory();
-  let total = 0;
+  const history=getHistory();
+  let total=0;
   for (const h of history){
-    if ((h.day || (h.ts ? todayKey(new Date(h.ts)) : "")) === dayStr){
-      total += Number(h.kcal || 0);
-    }
+    const d = h.day || (h.ts ? todayKey(new Date(h.ts)) : "");
+    if (d === dayStr) total += Number(h.kcal || 0);
   }
   return total;
 }
@@ -404,33 +527,67 @@ function renderDashboard(){
   const consumed = sumConsumedForDay(day);
 
   const remainingRaw = target - consumed;
-  const remaining = Math.max(0, Math.round(remainingRaw));
-  const pct = target > 0 ? Math.min(100, Math.round((consumed/target)*100)) : 0;
+  const pct = target>0 ? Math.min(100, Math.round((consumed/target)*100)) : 0;
 
   $("dashConsumed").textContent = Math.round(consumed);
   $("dashTarget").textContent = Math.round(target);
-  $("dashRemaining").textContent = remaining;
-  $("dashPct").textContent = pct;
   $("dashFill").style.width = `${pct}%`;
+  $("dashPct").textContent = pct;
 
-  const d = new Date();
-  const label = d.toLocaleDateString("pt-BR", { weekday:"long", day:"2-digit", month:"short" });
-  $("todayLabel").textContent = label.charAt(0).toUpperCase() + label.slice(1);
+  const remainingEl = $("dashRemaining");
+  if (remainingRaw >= 0){
+    remainingEl.textContent = Math.round(remainingRaw);
+  } else {
+    remainingEl.textContent = `${Math.abs(Math.round(remainingRaw))} acima`;
+  }
 
-  // Se passou da meta, mostre “extra”
-  if (remainingRaw < 0){
-    $("dashRemaining").textContent = `${Math.abs(Math.round(remainingRaw))} acima`;
+  const d=new Date();
+  const label=d.toLocaleDateString("pt-BR",{weekday:"long", day:"2-digit", month:"short"});
+  $("todayLabel").textContent = label.charAt(0).toUpperCase()+label.slice(1);
+}
+
+function renderHistory(){
+  const history=getHistory();
+  const wrap=$("history");
+  wrap.innerHTML="";
+
+  if (!history.length){
+    wrap.innerHTML = `<p class="muted">Nada salvo ainda.</p>`;
+    return;
+  }
+
+  for (const h of history){
+    const dt=new Date(h.ts);
+    const kcal=Math.round(Number(h.kcal||0));
+    const div=document.createElement("div");
+    div.className="histCard";
+    div.innerHTML = `
+      <div><strong>${kcal} kcal</strong> <span class="muted">(${dt.toLocaleString()})</span></div>
+      <div class="muted">${escapeHtml(h.desc || "")}</div>
+      ${h.photo ? `<img alt="foto" src="${h.photo}" class="histImg">` : ""}
+    `;
+    wrap.appendChild(div);
   }
 }
 
-/* ---------------- Settings UI ---------------- */
+/* ---------------- Portion box (agora só informativo) ---------------- */
+function renderPortionBox(keys){
+  const box = $("portionBox");
+  if (!box) return;
+  if (!keys || !keys.length){ box.innerHTML=""; return; }
+
+  box.innerHTML = `
+    <h2>Itens detectados</h2>
+    <p class="muted">Eu vou pedir somente os gramas para cada item detectado.</p>
+  `;
+}
+
+/* ---------------- Settings ---------------- */
 function setupSettings(){
   const input = $("targetKcal");
-  const btn = $("saveTarget");
-
   input.value = getDailyTarget();
 
-  btn.addEventListener("click", () => {
+  $("saveTarget").addEventListener("click", () => {
     const v = Number(input.value || 0);
     if (v > 0) setDailyTarget(v);
     renderDashboard();
@@ -438,32 +595,60 @@ function setupSettings(){
   });
 }
 
-/* ---------------- Home quick add ---------------- */
-function setupQuickAdd(){
-  $("quickAddBtn").addEventListener("click", () => {
-    document.getElementById("quickAddKcal").focus();
-  });
-
-  $("quickAddSave").addEventListener("click", () => {
-    const v = Number($("quickAddKcal").value || 0);
-    if (v > 0){
-      quickAddKcal(v);
-      $("quickAddKcal").value = "";
-    }
-  });
-}
-
-/* ---------------- Misc buttons ---------------- */
+/* ---------------- Botões / Eventos ---------------- */
 function setupButtons(){
-  $("suggest").addEventListener("click", () => suggestFromText($("desc").value));
-  $("addItem").addEventListener("click", () => addItem(FOODS[0].key, 1));
   $("save").addEventListener("click", saveMeal);
 
   $("reset").addEventListener("click", () => {
-    $("desc").value = "";
-    state.items = [];
+    $("desc").value="";
+    state.items=[];
     renderItems();
-    renderQuickPortions([]);
+    renderPortionBox([]);
+  });
+
+  $("suggest").addEventListener("click", () => {
+    recalcMealFromDescription();
+  });
+
+  $("addItem").addEventListener("click", () => {
+    // adiciona um item genérico e pergunta gramas
+    const key = FOODS[0]?.key;
+    if (!key) return;
+    const grams = promptGramsFor(key);
+    if (grams === null) return;
+    addItem(key, grams);
+  });
+
+  // Auto: recalcula quando digitar descrição
+  $("desc").addEventListener("input", () => {
+    scheduleAutoCalc();
+  });
+
+  // Beliscos
+  $("snackAdd").addEventListener("click", () => {
+    const text = $("snackDesc").value.trim();
+    if (!text) return;
+
+    const key = bestMatchSnack(text);
+    if (!key || approxKcalPerGram(key) === null){
+      alert("Não consegui reconhecer esse belisco ainda. Tente uma palavra mais simples (ex.: 'chocolate', 'pão', 'banana').");
+      return;
+    }
+
+    const grams = promptGramsFor(key);
+    if (grams === null) return;
+
+    // salva como entrada no dia
+    const f = foodByKey(key);
+    saveMealToHistory({
+      desc: `Belisco: ${text}`,
+      photo: null,
+      items: [{ foodKey: key, grams }]
+    });
+
+    $("snackDesc").value="";
+    renderHistory();
+    renderDashboard();
   });
 
   $("clearHistory").addEventListener("click", () => {
@@ -477,19 +662,22 @@ async function init(){
   await loadFoods();
 
   setupNav();
+  setupProfile();
   setupPhoto();
   setupSettings();
-  setupQuickAdd();
   setupButtons();
 
-  // tela inicial
-  setActiveScreen("home");
-
-  // inicia com 1 item na tela registrar
-  if (FOODS.length) addItem(FOODS[0].key, 1);
-
+  renderItems();
   renderHistory();
   renderDashboard();
+
+  // Se não tem perfil ainda, começa no cadastro
+  const p = getProfile();
+  if (!p){
+    setActiveScreen("profile");
+  } else {
+    setActiveScreen("home");
+  }
 }
 
 init();
